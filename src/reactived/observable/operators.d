@@ -194,7 +194,8 @@ unittest
     import std.conv : to;
 
     range(0, 10).filter!(a => a % 2 == 0).map!(a => to!string(a))
-        .subscribe(value => assert(typeid(typeof(value)) is typeid(string), "value should be string"));
+        .subscribe(value => assert(typeid(typeof(value)) is typeid(string),
+                "value should be string"));
 }
 
 /// Create an Observable using an accumulator function.
@@ -227,7 +228,58 @@ unittest
 {
     import std.stdio : writeln;
 
-    range(0, 10).reduce!((a, b) => a + b).subscribe(value => assert(value == 45, "Sum of 1..10 is 45."));
+    range(0, 10).reduce!((a, b) => a + b).subscribe(value => assert(value == 45,
+            "Sum of 1..10 is 45."));
+}
+
+/// Applies an accumulator function to all values in the source Observable and emits the current result with each value.
+template scan(alias fun)
+{
+    Observable!T scan(T)(Observable!T source)
+    {
+        Disposable subscribe(Observer!T observer)
+        {
+            T currentValue;
+            void onNext(T value)
+            {
+                currentValue = binaryFun!(fun)(currentValue, value);
+                observer.onNext(currentValue);
+            }
+
+            void onCompleted()
+            {
+                observer.onCompleted();
+            }
+
+            return source.subscribe(&onNext, &onCompleted, &observer.onError);
+        }
+
+        return create(&subscribe);
+    }
+}
+
+unittest
+{
+    import reactived.subject : Subject;
+
+    auto s = new Subject!int();
+    int value;
+
+    s.scan!((a, b) => a + b).subscribe(delegate(x) { value += x; }, () => assert(value == 10));
+
+    s.onNext(1);
+    assert(value == 1);
+
+    s.onNext(2);
+    assert(value == 3);
+
+    s.onNext(3);
+    assert(value == 6);
+
+    s.onNext(4);
+    assert(value == 10);
+
+    s.onCompleted();
 }
 
 /// Generates an Observable which emits true if fun is satisfied on all elements or false if fun at any point evaluates to false. 
