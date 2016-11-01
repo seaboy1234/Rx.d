@@ -194,7 +194,7 @@ unittest
     import std.conv : to;
 
     range(0, 10).filter!(a => a % 2 == 0).map!(a => to!string(a))
-        .subscribe(value => writeln(value));
+        .subscribe(value => assert(typeid(typeof(value)) is typeid(string), "value should be string"));
 }
 
 /// Create an Observable using an accumulator function.
@@ -227,8 +227,7 @@ unittest
 {
     import std.stdio : writeln;
 
-    writeln("sum of 1 to 10:");
-    range(0, 10).reduce!((a, b) => a + b).subscribe(value => writeln(value));
+    range(0, 10).reduce!((a, b) => a + b).subscribe(value => assert(value == 45, "Sum of 1..10 is 45."));
 }
 
 /// Generates an Observable which emits true if fun is satisfied on all elements or false if fun at any point evaluates to false. 

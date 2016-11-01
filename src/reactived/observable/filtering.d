@@ -418,17 +418,12 @@ unittest
 {
     import std.stdio : writeln;
 
-    range(0, 10).filter!(a => a % 2 == 0).subscribe(value => writeln("filter() => ",
-            value), () => writeln("filter() => completed"));
+    range(0, 10).filter!(a => a % 2 == 0).subscribe(value => assert(value % 2 == 0,
+            "value should be even."));
 
-    /++
-        Output: 
+    int[] values;
 
-        0
-        2
-        4
-        6
-        8
-        completed
-    +/
+    range(0, 100).filter!(a => a % 3 == 0).filter!(a => a % 5 == 0).subscribe(delegate(value) {
+        values ~= value;
+    }, () => assert(values == [0, 15, 30, 45, 60, 75, 90], "Composing filters"));
 }
