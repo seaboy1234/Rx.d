@@ -214,6 +214,7 @@ template reduce(alias fun)
             void onCompleted()
             {
                 observer.onNext(currentValue);
+                observer.onCompleted();
             }
 
             return source.subscribe(&onNext, &onCompleted, &observer.onError);
