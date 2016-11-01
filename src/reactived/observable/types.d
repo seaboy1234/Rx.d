@@ -96,5 +96,91 @@ interface Observable(T)
     }
 }
 
+Disposable subscribe(T, O)(Observable!T observable, O observer)
+        if (isObserver!(O, T))
+{
+    return observable.subscribe(&observer.onNext, &observer.onCompleted, &observer.onError);
+}
+
+unittest
+{
+    import reactived.observable : range;
+
+    struct A
+    {
+        int count;
+
+        void onNext(int value)
+        {
+            count++;
+        }
+
+        void onCompleted()
+        {
+            assert(count == 10);
+        }
+
+        void onError(Throwable)
+        {
+            assert(0);
+        }
+    }
+
+    A a = A();
+
+    Disposable x = subscribe!(int, A)(range(0, 10), a);
+}
+
+/// Converts 
+Observable!E asObservable(T, E)(T observable) if (isObservable!(T, E))
+{
+    import reactived.observable.generators : create;
+
+    Disposable subscribe(Observer!E observer)
+    {
+        return observable.subscribe(observer);
+    }
+
+    return create(&subscribe);
+}
+
+template isObservable(T, E)
+{
+    enum bool isObservable = __traits(compiles, {
+            T observable = T.init;
+            Observer!E observer = void;
+
+            Disposable x = observable.subscribe(observer);
+        });
+}
+
+unittest
+{
+    class A
+    {
+        Disposable subscribe(O)(O observer) if (isObserver!(O, int))
+        {
+            import reactived.disposable : empty;
+
+            observer.onNext(1);
+
+            return empty();
+        }
+    }
+
+    struct B
+    {
+        void subscribe(Observer!int observer)
+        {
+        }
+    }
+
+    assert(isObservable!(Observable!(int), int));
+    assert(!isObservable!(B, int), "B is not observable");
+    assert(isObservable!(A, int), "A is observable");
+}
+
 /// Represents a value with no information.
-struct Unit { }
+struct Unit
+{
+}
