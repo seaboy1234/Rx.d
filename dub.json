@@ -1,0 +1,10 @@
+{
+	"name": "reactived",
+	"authors": [
+		"Christian"
+	],
+	"description": "Reactive Extensions for the D Programming Language",
+	"copyright": "Copyright © 2016, Christian",
+	"license": "MIT",
+	"targetPath": "target"
+}
