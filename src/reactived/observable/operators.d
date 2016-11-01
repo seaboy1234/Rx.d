@@ -266,7 +266,7 @@ unittest
     auto s = new Subject!int();
     int value;
 
-    s.scan!((a, b) => a + b).subscribe(delegate(x) { value += x; }, () => assert(value == 10));
+    s.scan!((a, b) => a + b).subscribe(delegate(x) { value = x; }, () => assert(value == 10));
 
     s.onNext(1);
     assert(value == 1);
