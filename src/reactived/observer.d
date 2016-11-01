@@ -1,5 +1,7 @@
 module reactived.observer;
 
+import std.range : isInputRange, ElementType;
+
 /// Represents an Observer which listens on an Observable sequence.
 interface Observer(T)
 {
@@ -16,13 +18,13 @@ interface Observer(T)
 template isObserver(T, E)
 {
     enum bool isObserver = __traits(compiles, {
-        T observer = void;
-        E element = void;
+            T observer = void;
+            E element = void;
 
-        observer.onNext(element);
-        observer.onError(Throwable.init);
-        observer.onCompleted();
-    });
+            observer.onNext(element);
+            observer.onError(Throwable.init);
+            observer.onCompleted();
+        });
 }
 
 unittest
@@ -78,4 +80,44 @@ unittest
     assert(isObserver!(A, int));
     assert(isObserver!(B, int));
     assert(!isObserver!(C, int));
+}
+
+/// Informs the observer of a range of values.
+template onNext(T, E) if (isInputRange!E && isObserver!(T, ElementType!(E)))
+{
+    void onNext(T observer, E values)
+    {
+        foreach (value; values)
+        {
+            observer.onNext(value);
+        }
+    }
+}
+
+unittest
+{
+    int calls;
+
+    struct A
+    {
+        void onNext(int)
+        {
+            ++calls;
+        }
+
+        void onCompleted()
+        {
+        }
+
+        void onError(Throwable)
+        {
+        }
+    }
+
+    auto observer = A();
+    auto arr = [10, 20];
+
+    onNext(observer, arr);
+
+    assert(calls == arr.length);
 }
