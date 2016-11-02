@@ -2,10 +2,13 @@ module reactived.observable.types;
 
 import reactived.observer;
 import reactived.disposable : Disposable, createDisposable;
+import std.range;
 
 /// Represents an observable sequence of values.
 interface Observable(T)
 {
+    alias ElementType = T;
+
     /// Subscribe to the Observable using an Observer.
     Disposable subscribe(Observer!(T) observer);
 
@@ -95,6 +98,11 @@ interface Observable(T)
         return subscribe(onNext, &onCompleted, onError);
     }
 }
+
+interface GroupedObservable(TKey, TValue) : Observable!TValue
+{
+    TKey key() @property;
+} 
 
 Disposable subscribe(T, O)(Observable!T observable, O observer)
         if (isObserver!(O, T))

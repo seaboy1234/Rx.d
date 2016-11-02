@@ -427,3 +427,85 @@ unittest
         values ~= value;
     }, () => assert(values == [0, 15, 30, 45, 60, 75, 90], "Composing filters"));
 }
+
+/**
+    Divides a source Observable into a series of Observables which emit a subset of the source.
+
+    Calls to the keySelector function are modeled by the following equation:
+    <em>calls = (<strong>[spawned observables]</strong> + 1) * <strong>[total elements]</strong></em>
+*/
+template groupBy(alias keySelector)
+{
+    alias getKey = unaryFun!(keySelector);
+
+    Observable!(GroupedObservable!(typeof(getKey(TValue.init)), TValue)) groupBy(TValue)(
+            Observable!TValue source)
+    {
+        alias TKey = typeof(getKey(TValue.init));
+
+        class AnonymousGroupedObservable : GroupedObservable!(TKey, TValue)
+        {
+            private TKey _key;
+
+            Observable!TValue _source;
+
+            this(Observable!TValue source, TKey key) pure
+            {
+                _source = source;
+                _key = key;
+            }
+
+            TKey key() @property
+            {
+                return _key;
+            }
+
+            Disposable subscribe(Observer!TValue observer)
+            {
+                return _source.subscribe(observer);
+            }
+        }
+
+        Disposable subscribe(Observer!(GroupedObservable!(TKey, TValue)) observer)
+        {
+            GroupedObservable!(TKey, TValue)[TKey] observables;
+            void onNext(TValue value)
+            {
+                TKey key = getKey(value);
+                if (key !in observables)
+                {
+                    auto observable = source.filter!(a => key == getKey(a));
+                    observables[key] = new AnonymousGroupedObservable(observable, key);
+                    observer.onNext(observables[key]);
+                }
+            }
+
+            return source.subscribe(&onNext, &observer.onCompleted, &observer.onError);
+        }
+
+        return create(&subscribe);
+    }
+}
+
+///
+unittest
+{
+    int observables;
+
+    // Create 10 lots of 10.
+
+    int modulate(int value)
+    {
+        return value % 10;
+    }
+
+    range(0, 100).groupBy!(modulate).subscribe(delegate(observable) {
+        ++observables;
+        int values;
+        observable.subscribe(delegate(int) { ++values; }, delegate() {
+            assert(values == 10);
+        });
+    });
+
+    assert(observables == 10);
+}
