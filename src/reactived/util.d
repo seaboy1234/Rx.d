@@ -1,149 +1,5 @@
 module reactived.util;
 
-struct List(T)
-{
-    private
-    {
-        T[] items = [T.init];
-        size_t length;
-    }
-
-    alias range this;
-
-    this(T[] items_)
-    {
-        items = items_;
-        length = items.length;
-    }
-
-    auto range()
-    {
-        struct ListRange
-        {
-            private
-            {
-                size_t index;
-                List!T list;
-            }
-
-            this(List!T list_)
-            {
-                list = list_;
-            }
-
-            T front() @property
-            {
-                return list[index];
-            }
-
-            T back() @property
-            {
-                return list[list.length - index];
-            }
-
-            void popFront()
-            {
-                index++;
-            }
-
-            void popBack()
-            {
-                index++;
-            }
-
-            bool empty() @property
-            {
-                return index >= list.length;
-            }
-
-            typeof(this) save() @property
-            {
-                return this;
-            }
-        }
-
-        return ListRange(this);
-    }
-
-    void add(T item)
-    {
-        if (length >= items.length)
-        {
-            items.length *= 2;
-        }
-        items[length++] = item;
-    }
-
-    void remove(T item)
-    {
-        size_t index = indexOf(item);
-        if (index == -1)
-        {
-            return;
-        }
-        removeAt(index);
-    }
-
-    void removeAt(size_t index)
-    {
-        if (index == length - 1)
-        {
-            length--;
-            items[index] = T.init;
-            return;
-        }
-
-        for (size_t i = index; i < length - 2; i++)
-        {
-            items[i] = items[i + 1];
-        }
-        length--;
-        if (items.length < length / 2)
-        {
-            items.length /= 2;
-        }
-    }
-
-    void clear()
-    {
-        items = T[].init;
-        length = 0;
-    }
-
-    size_t indexOf(T item)
-    {
-        foreach (index, value; items)
-        {
-            if (item == value)
-            {
-                return index;
-            }
-        }
-        return -1;
-    }
-
-    T opIndex(size_t index)
-    in
-    {
-        assert(index < length);
-        assert(index >= 0);
-    }
-    body
-    {
-        return items[index];
-    }
-
-    void opIndexAssign(size_t index, T value)
-    {
-        items[index] = value;
-    }
-
-    T opIndexUnary(string op)()
-    {
-        mixin(op ~ items);
-    }
-}
-
 import core.thread;
 
 /++
@@ -189,7 +45,7 @@ abstract class ValueFiber(T) : Fiber
         while (!_hasValue)
         {
             this.call();
-            if(Fiber.getThis() !is null)
+            if (Fiber.getThis() !is null)
             {
                 Fiber.yield();
             }
@@ -197,7 +53,7 @@ abstract class ValueFiber(T) : Fiber
 
         if (hasError)
         {
-            if(Fiber.getThis() !is null)
+            if (Fiber.getThis() !is null)
             {
                 Fiber.yieldAndThrow(_error);
             }
@@ -242,7 +98,7 @@ private:
 /// Waits for fiber to return a value.
 T await(T)(ValueFiber!T fiber)
 {
-    await(cast(Fiber)fiber);
+    await(cast(Fiber) fiber);
 
     return fiber.value;
 }
@@ -266,7 +122,6 @@ T await(T)(T delegate() dg)
 
     return await!(T)(new ThreadValueFiber());
 }
-
 
 ///
 unittest

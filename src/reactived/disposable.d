@@ -91,11 +91,9 @@ unittest
 
 class CompositeDisposable : Disposable
 {
-    import reactived.util : List;
-
     private
     {
-        List!Disposable _disposables;
+        Disposable[] _disposables;
     }
 
     this()
@@ -105,12 +103,12 @@ class CompositeDisposable : Disposable
 
     this(Disposable[] disposables...)
     {
-        _disposables = List!Disposable(disposables);
+        _disposables = disposables.dup;
     }
 
     void add(Disposable disposable)
     {
-        _disposables.add(disposable);
+        _disposables ~= disposable;
     }
 
     void dispose()
@@ -119,7 +117,7 @@ class CompositeDisposable : Disposable
         {
             value.dispose();
         }
-        _disposables.clear();
+        _disposables = Disposable[].init;
     }
 }
 

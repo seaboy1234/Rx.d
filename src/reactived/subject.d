@@ -14,7 +14,7 @@ class Subject(T) : Observable!T, Observer!T
     private
     {
         bool _completed;
-        List!(Observer!(T)) _observers;
+        Observer!(T)[] _observers;
     }
 
     /// Provides the next value to the underlying Observers.
@@ -52,7 +52,7 @@ class Subject(T) : Observable!T, Observer!T
         {
             onError(e);
         }
-        _observers.clear();
+        _observers = Observer!(T)[].init;
         _completed = true;
     }
 
@@ -66,16 +66,22 @@ class Subject(T) : Observable!T, Observer!T
             observer.onError(error);
         }
 
-        _observers.clear();
+        _observers = Observer!(T)[].init;
     }
 
     /// Subscribes an Observer to this Observable sequence.
     Disposable subscribe(Observer!(T) observer)
     {
-        enforce(!_completed, "This Observable has already completed.");
-        _observers.add(observer);
+        import std.algorithm : countUntil, remove;
 
-        return createDisposable(() => _observers.remove(observer));
+        enforce(!_completed, "This Observable has already completed.");
+        _observers ~= observer;
+
+        return createDisposable(() {
+            size_t index = _observers.countUntil(observer);
+            assert(index != -1);
+            _observers.remove(index);
+        });
     }
 }
 
@@ -121,7 +127,7 @@ class ReplaySubject(T) : Subject!(T)
     private
     {
         Duration _window;
-        List!(SubjectItem) _items;
+        SubjectItem[] _items;
     }
 
     private struct SubjectItem
@@ -144,25 +150,28 @@ class ReplaySubject(T) : Subject!(T)
 
     override void onNext(T value)
     {
-        _items.add(SubjectItem(Clock.currTime(), value));
+        _items ~= SubjectItem(Clock.currTime(), value);
         super.onNext(value);
     }
 
     override Disposable subscribe(Observer!T observer)
     {
-        import std.algorithm : filter = filter;
+        import std.algorithm : filter = filter, countUntil, remove;
 
         auto disposable = super.subscribe(observer);
         try
         {
-            foreach (item; _items.range.filter!(g => g.time - Clock.currTime() <= _window))
+            auto range = _items.filter!(g => g.time - Clock.currTime() <= _window);
+            foreach (item; range)
             {
                 observer.onNext(item.item);
             }
 
-            foreach (item; _items.range.filter!(g => g.time - Clock.currTime() >= _window))
+            foreach (item; range)
             {
-                _items.remove(item);
+                size_t index = _items.countUntil(item);
+                assert(index != -1);
+                _items.remove(index);
             }
         }
         catch (Exception e)
@@ -200,15 +209,15 @@ unittest
     auto observer = new MyObserver();
 
     subject.onNext(1);
-    auto token = subject.subscribe(observer);   // => 1
-    subject.onNext(2);                          // => 2
+    auto token = subject.subscribe(observer); // => 1
+    subject.onNext(2); // => 2
     token.dispose();
     subject.onNext(3);
 
-    subject.subscribe(observer);                // => 1
-                                                // => 2
-                                                // => 3
-    subject.onCompleted();                      // => Completed
+    subject.subscribe(observer); // => 1
+    // => 2
+    // => 3
+    subject.onCompleted(); // => Completed
 }
 
 /// Masks the underlying source Observable.
@@ -221,7 +230,6 @@ Observable!T asObservable(T)(Observable!T source)
 
     return create(&subscribe);
 }
-
 
 /// 
 unittest
