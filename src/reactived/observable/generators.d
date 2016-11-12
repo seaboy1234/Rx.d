@@ -307,32 +307,53 @@ unittest
     See_Also:
     Observable!Unit start(F)(F action)
 +/
-Observable!(typeof(F.init())) start(F)(F action)
-        if (isCallable!F && typeid(typeof(F.init())) !is typeid(typeof(voidFunc())))
+Observable!(ReturnTypeOrUnit!(F)) start(F)(F action) if (isCallable!F)
 {
     import reactived.subject : Subject;
 
-    class StartObservable : Subject!(typeof(F.init()))
+    static import std.parallelism;
+
+    enum isVoid = is(typeof(action()) == void);
+
+    static if (!isVoid)
     {
-        typeof(action()) value;
+        alias T = typeof(action());
+    }
+    else
+    {
+        alias T = Unit;
+    }
+
+    class StartObservable : Subject!(T)
+    {
+        T value;
         bool hasValue;
         bool started;
 
-        override Disposable subscribe(Observer!(typeof(F.init())) observer)
+        override Disposable subscribe(Observer!(T) observer)
         {
             if (!started)
             {
-                import core.thread : Thread;
-
-                void run()
+                T run() @trusted
                 {
-                    auto value = action();
-                    setValue(value);
+                    static if (isVoid)
+                    {
+                        action();
+                        setValue(Unit());
+                        return Unit();
+                    }
+                    else
+                    {
+                        auto value = action();
+                        setValue(value);
+                        return value;
+                    }
                 }
 
                 started = true;
 
-                new Thread(&run).start();
+                auto t = std.parallelism.task(&run);
+                t.executeInNewThread();
             }
             if (hasValue)
             {
@@ -344,10 +365,13 @@ Observable!(typeof(F.init())) start(F)(F action)
         }
 
     private:
-        void setValue(typeof(F.init()) val)
+        void setValue(T val)
         {
             hasValue = true;
-            value = val;
+            static if (!isVoid)
+            {
+                value = val;
+            }
             onNext(val);
             onCompleted();
         }
@@ -385,65 +409,8 @@ unittest
     testStart.subscribe(&test2).dispose();
 
     testStart.subscribe(value => assert(value == 3, "value should be 3."));
-}
 
-/++
-    Creates an Observable sequence which lazily evaluates action.
-
-    This is a variant which accepts a void delegate()
-+/
-Observable!Unit start(F)(F action)
-        if (isCallable!F && typeid(typeof(F.init())) is typeid(typeof(voidFunc())))
-{
-    import reactived.subject : Subject;
-
-    class StartObservable : Subject!Unit
-    {
-        bool hasValue;
-        bool started;
-
-        override Disposable subscribe(Observer!Unit observer)
-        {
-            if (!started)
-            {
-                import core.thread : Thread;
-
-                void run()
-                {
-                    action();
-                    setValue(true);
-                }
-
-                started = true;
-
-                new Thread(&run).start();
-            }
-            if (hasValue)
-            {
-                observer.onNext(Unit());
-                observer.onCompleted();
-                return disposable.empty();
-            }
-            return super.subscribe(observer);
-        }
-
-    private:
-        void setValue(bool value)
-        {
-            hasValue = value;
-            onNext(Unit());
-            onCompleted();
-        }
-    }
-
-    return new StartObservable();
-}
-
-unittest
-{
-    import std.stdio : writeln;
-
-    static void test()
+    static void test3()
     {
         import core.thread : Thread;
         import std.datetime : dur;
@@ -458,11 +425,19 @@ unittest
         published = true;
     }
 
-    start(&test).subscribe(&setPublished, () => assert(published, "onNext should be called."));
+    start(&test3).subscribe(&setPublished, () => assert(published, "onNext should be called."));
+
+    while (!published) { }
 }
 
-private:
-
-void voidFunc()
+template ReturnTypeOrUnit(F) if (isCallable!F)
 {
+    static if (is(typeof(F.init()) == void))
+    {
+        alias ReturnTypeOrUnit = typeof(Unit());
+    }
+    else
+    {
+        alias ReturnTypeOrUnit = typeof(F.init());
+    }
 }
