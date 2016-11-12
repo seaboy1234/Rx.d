@@ -1,13 +1,13 @@
-module reactived.observable.filtering;
+module reactived.observable.operators.filtering;
 
-import reactived.observer;
-import reactived.disposable : Disposable, createDisposable;
-import reactived.observable;
-
-import disposable = reactived.disposable;
 import std.functional;
 import std.traits;
 import std.range.primitives;
+
+import reactived.observable;
+import reactived.observer;
+import reactived.disposable : Disposable, createDisposable;
+import disposable = reactived.disposable;
 
 /// Create an Observable sequence using the first n values from the source.
 Observable!T take(T)(Observable!T source, int count) pure @safe
@@ -508,4 +508,42 @@ unittest
     });
 
     assert(observables == 10);
+}
+
+/// Create an Observable sequence which ignores all elements but still retains the onCompleted and onError events.
+Observable!T ignoreElements(T)(Observable!T source)
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        void onNext(T)
+        {
+
+        }
+
+        return source.subscribe(&onNext, &observer.onCompleted, &observer.onError);
+    }
+
+    return create(&subscribe);
+}
+
+///
+unittest
+{
+    import std.stdio : writeln;
+    import reactived.subject : Subject;
+
+    Subject!string subject = new Subject!string();
+
+    subject.ignoreElements().subscribe(value => writeln(value), () => writeln("completed"));
+
+    subject.onNext("Hello");
+    subject.onNext("World");
+
+    subject.onCompleted();
+
+    /++
+        Output
+
+        completed
+    +/
 }

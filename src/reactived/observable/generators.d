@@ -1,13 +1,14 @@
 module reactived.observable.generators;
 
+import std.functional;
+import std.traits;
+import std.range.primitives;
+
 import reactived.observer;
 import reactived.disposable : Disposable, createDisposable;
 import reactived.observable;
 
 import disposable = reactived.disposable;
-import std.functional;
-import std.traits;
-import std.range.primitives;
 
 /// Create an Observable sequence from a Subscribe method.
 Observable!T create(T)(Disposable delegate(Observer!T) subscribe) pure @safe
