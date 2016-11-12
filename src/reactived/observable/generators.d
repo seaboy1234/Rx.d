@@ -209,7 +209,7 @@ unittest
 /// Create an Observable sequence which emits a range of numerics.
 Observable!T range(T)(T start, T count) pure @safe if (isNumeric!T)
 {
-    return unfold!(T, T)(start, v => v < count, v => v + 1, v => v);
+    return unfold!(T, T)(start, v => v - start < count, v => v + 1, v => v);
 }
 
 ///
@@ -229,6 +229,8 @@ unittest
         8
         9
     +/
+
+    range(10, 10).length().subscribe(count => assert(count == 10));
 }
 
 /// Create an Observable sequence using an InputRange.
