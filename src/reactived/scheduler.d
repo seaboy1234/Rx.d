@@ -110,7 +110,7 @@ unittest
     import core.thread : Thread;
 
     bool safe;
-    int tid = Thread.getThis().id;
+    size_t tid = Thread.getThis().id;
 
     Scheduler s = new NewThreadScheduler();
 
@@ -183,7 +183,7 @@ unittest
     import core.thread : Thread;
     import reactived.util : dump;
 
-    int tid = Thread.getThis().id;
+    size_t tid = Thread.getThis().id;
 
     Observable!int o = create((Observer!int observer) {
         assert(tid == Thread.getThis().id);
@@ -225,7 +225,7 @@ unittest
     import core.thread : Thread;
     import reactived.util : dump;
 
-    int tid = Thread.getThis().id;
+    size_t tid = Thread.getThis().id;
 
     Observable!int o = create((Observer!int observer) {
         assert(tid != Thread.getThis().id);
