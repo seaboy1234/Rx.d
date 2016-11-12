@@ -147,3 +147,41 @@ void await(Fiber fiber)
         }
     }
 }
+
+import reactived.observable;
+import reactived.disposable;
+
+/**
+    Dumps values of the provided observable to stdout in the format `name => value`.
+*/
+Disposable dump(T)(Observable!T observable, string name)
+{
+    import std.stdio : writeln;
+
+    // dfmt off
+    return observable.subscribe(
+            val => writeln(name, " => ", val),
+            () => writeln(name, " => completed"), 
+            e => writeln(name, " => Error: ", e));
+    // dfmt on
+}
+
+unittest
+{
+    import reactived.subject : Subject;
+
+    Subject!int s = new Subject!int();
+
+    auto sub = s.dump("s");
+
+    s.onNext(1);
+    s.onNext(2);
+    s.onNext(5);
+    s.onCompleted();
+
+    s = new Subject!int();
+
+    sub = s.dump("s");
+
+    s.onError(new Exception("It failed."));
+}
