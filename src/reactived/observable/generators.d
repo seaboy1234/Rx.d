@@ -427,7 +427,9 @@ unittest
 
     start(&test3).subscribe(&setPublished, () => assert(published, "onNext should be called."));
 
-    while (!published) { }
+    while (!published)
+    {
+    }
 }
 
 template ReturnTypeOrUnit(F) if (isCallable!F)
@@ -440,4 +442,42 @@ template ReturnTypeOrUnit(F) if (isCallable!F)
     {
         alias ReturnTypeOrUnit = typeof(F.init());
     }
+}
+
+Observable!T unfold(T, Result)(T seed, bool delegate(T) condition,
+        T delegate(T) iterate, Result delegate(T) resultSelector)
+{
+    auto subscribe(Observer!T observer)
+    {
+        bool disposed;
+        T current = seed;
+
+        do
+        {
+            try
+            {
+                observer.onNext(resultSelector(current));
+            }
+            catch (Exception e)
+            {
+                observer.onError(e);
+            }
+            current = iterate(current);
+        }
+        while (!disposed && condition(current));
+
+        observer.onCompleted();
+
+        return { disposed = true; };
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    import reactived.util : dump;
+
+    unfold!(int, int)(1, v => v < 25, v => v + 1, v => v).dump("unfold(1)");
+    unfold!(int, int)(1, v => v < 100, v => v + 1, v => v).take(10).dump("unfold(1).take(10)");
 }
