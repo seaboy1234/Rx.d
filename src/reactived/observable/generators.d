@@ -208,28 +208,7 @@ unittest
 /// Create an Observable sequence which emits a range of numerics.
 Observable!T range(T)(T start, T count) pure @safe if (isNumeric!T)
 {
-    Disposable subscribe(Observer!T observer)
-    {
-        bool exited = false;
-        scope (exit)
-        {
-            for (T i = 0; i < count; i++)
-            {
-                if (exited)
-                {
-                    break;
-                }
-                observer.onNext(i + start);
-            }
-            if (!exited)
-            {
-                observer.onCompleted();
-            }
-        }
-        return disposable.createDisposable({ exited = true; });
-    }
-
-    return create(&subscribe);
+    return unfold!(T, T)(start, v => v < count, v => v + 1, v => v);
 }
 
 ///
