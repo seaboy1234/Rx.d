@@ -102,6 +102,11 @@ interface Observable(T)
 interface GroupedObservable(TKey, TValue) : Observable!TValue
 {
     TKey key() @property;
+}
+
+interface ConnectableObservable(T) : Observable!T
+{
+    void connect();
 } 
 
 Disposable subscribe(T, O)(Observable!T observable, O observer)
