@@ -233,54 +233,6 @@ unittest
     range(10, 10).length().subscribe(count => assert(count == 10));
 }
 
-/// Create an Observable sequence using an InputRange.
-Observable!(ElementType!Range) asObservable(Range)(Range range) pure @safe
-{
-    Disposable subscribe(Observer!(ElementType!Range) observer)
-    {
-        bool exited;
-        scope (exit)
-        {
-            foreach (value; range)
-            {
-                if (exited)
-                {
-                    break;
-                }
-                observer.onNext(value);
-            }
-            if (!exited)
-            {
-                observer.onCompleted();
-            }
-        }
-        return disposable.createDisposable({ exited = true; });
-    }
-
-    return create(&subscribe);
-}
-
-///
-unittest
-{
-    import std.stdio : writeln;
-
-    string[] arr = ["this", "is", "a", "sample", "range"];
-
-    arr.asObservable().subscribe(value => writeln(value), () => writeln("completed"));
-
-    /++
-        Output:
-
-        this
-        is
-        a
-        sample
-        range
-        completed
-    +/
-}
-
 /++
     Creates an Observable sequence which lazily evaluates action.
 
