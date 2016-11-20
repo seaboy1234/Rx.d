@@ -1,12 +1,52 @@
 module reactived.scheduler;
 
+import std.traits;
+import std.parallelism : task, taskPool, TaskPool;
+
 import reactived;
 import reactived.observer;
-import std.traits;
 
 interface Scheduler
 {
     void run(void delegate() dg);
+
+    final void run(void delegate(void delegate()) dg)
+    {
+        run(() => dg(() => run(dg)));
+    }
+}
+
+Scheduler defaultScheduler()
+{
+    import std.concurrency : initOnce;
+
+    __gshared DefaultScheduler default_;
+    return initOnce!default_({
+        auto p = new DefaultScheduler();
+        return p;
+    }());
+}
+
+Scheduler newThreadScheduler()
+{
+    import std.concurrency : initOnce;
+
+    __gshared NewThreadScheduler newThread;
+    return initOnce!newThread({
+        auto p = new NewThreadScheduler();
+        return p;
+    }());
+}
+
+Scheduler taskScheduler()
+{
+    import std.concurrency : initOnce;
+
+    __gshared TaskScheduler task;
+    return initOnce!task({
+        auto p = new TaskScheduler();
+        return p;
+    }());
 }
 
 template isScheduler(T)
@@ -41,8 +81,6 @@ unittest
 
     assert(safe);
 }
-
-import std.parallelism : task, taskPool, TaskPool;
 
 class TaskScheduler : Scheduler
 {
