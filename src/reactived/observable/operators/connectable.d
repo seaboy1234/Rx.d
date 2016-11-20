@@ -38,11 +38,11 @@ unittest
 {
     import std.random : Random, unpredictableSeed;
     import reactived.util : dump;
-    import reactived.scheduler : observeOn, TaskScheduler;
+    import reactived.scheduler : observeOn, currentThreadScheduler;
 
     // dfmt off
     auto o = Random(unpredictableSeed).asObservable()
-                                      .observeOn(new TaskScheduler())
+                                      .observeOn(currentThreadScheduler)
                                       .take(10)
                                       .publish();
     // dfmt on
@@ -56,4 +56,6 @@ unittest
     o.dump("publish()");
 
     o.connect();
+
+    currentThreadScheduler.work();
 }
