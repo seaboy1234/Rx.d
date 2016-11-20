@@ -45,7 +45,6 @@ class RefCountDisposable : Disposable
     /// Disposes the RefCountDisposable.
     void dispose() @safe
     {
-        enforce(!_disposed, "Cannot dispose a disposed object!");
         while (!canDispose)
         {
         }
