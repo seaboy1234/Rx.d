@@ -31,7 +31,7 @@ class RefCountDisposable : Disposable
     {
         enforce(!_disposed, "Cannot invoke on a disposed object!");
 
-        _references++;
+        ++_references;
 
         return createDisposable(() => removeReference());
     }
@@ -113,11 +113,17 @@ class CompositeDisposable : Disposable
 
     void dispose()
     {
-        foreach (value; _disposables)
+        try
         {
-            value.dispose();
+            foreach (value; _disposables)
+            {
+                value.dispose();
+            }
         }
-        _disposables = Disposable[].init;
+        finally
+        {
+            _disposables = Disposable[].init;
+        }
     }
 }
 
@@ -137,6 +143,35 @@ unittest
     composite.add(refCount);
 
     composite.dispose();
+}
+
+class BooleanDisposable : Disposable
+{
+    import core.sync.mutex : Mutex;
+
+    private bool _isDisposed;
+    private Mutex _mutex;
+
+    this()
+    {
+        _mutex = new Mutex(this);
+    }
+
+    bool isDisposed() inout @safe @property
+    {
+        synchronized (_mutex)
+        {
+            return _isDisposed;
+        }
+    }
+
+    void dispose()
+    {
+        synchronized (_mutex)
+        {
+            _isDisposed = true;
+        }
+    }
 }
 
 /// Creates a Disposable which has the provided onDisposed delegate as its dispose method.
