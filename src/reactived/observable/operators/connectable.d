@@ -49,12 +49,11 @@ unittest
 
     uint[] items = (uint[]).init;
 
-    // FAILS: infinite loop; asObservable cannot gracefully handle infinite ranges.
-    //o.subscribe((x) { items ~= x; });
+    o.subscribe((x) { items ~= x; });
 
-    //o.subscribe((x) => assert(items[$ - 1] == x));
+    o.subscribe((x) => assert(items[$ - 1] == x));
 
-    // o.dump("publish()");
+    o.dump("publish()");
 
-    // o.connect();
+    o.connect();
 }
