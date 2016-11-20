@@ -21,10 +21,7 @@ Scheduler defaultScheduler()
     import std.concurrency : initOnce;
 
     __gshared DefaultScheduler default_;
-    return initOnce!default_({
-        auto p = new DefaultScheduler();
-        return p;
-    }());
+    return initOnce!default_({ auto p = new DefaultScheduler(); return p; }());
 }
 
 Scheduler newThreadScheduler()
@@ -32,10 +29,7 @@ Scheduler newThreadScheduler()
     import std.concurrency : initOnce;
 
     __gshared NewThreadScheduler newThread;
-    return initOnce!newThread({
-        auto p = new NewThreadScheduler();
-        return p;
-    }());
+    return initOnce!newThread({ auto p = new NewThreadScheduler(); return p; }());
 }
 
 Scheduler taskScheduler()
@@ -43,10 +37,12 @@ Scheduler taskScheduler()
     import std.concurrency : initOnce;
 
     __gshared TaskScheduler task;
-    return initOnce!task({
-        auto p = new TaskScheduler();
-        return p;
-    }());
+    return initOnce!task({ auto p = new TaskScheduler(); return p; }());
+}
+
+CurrentThreadScheduler currentThreadScheduler()
+{
+    return CurrentThreadScheduler.instance;
 }
 
 template isScheduler(T)
@@ -165,6 +161,104 @@ unittest
     Thread.sleep(dur!"msecs"(100));
 
     assert(safe);
+}
+
+class CurrentThreadScheduler : Scheduler
+{
+    import std.concurrency : send, receiveTimeout, Tid, thisTid;
+
+    private Tid _thread;
+
+    private  /* ThreadLocal! */ static CurrentThreadScheduler _instance;
+
+    private static struct DelegateMessage
+    {
+        void delegate() dg;
+    }
+
+    static this()
+    {
+        _instance = new CurrentThreadScheduler();
+    }
+
+    this()
+    {
+        _thread = thisTid();
+    }
+
+    static typeof(this) instance()
+    {
+        return _instance;
+    }
+
+    void run(void delegate() dg)
+    {
+        send(_thread, immutable DelegateMessage(dg));
+    }
+
+    void work()
+    {
+        import std.datetime : dur;
+        import std.exception : enforce;
+
+        enforce(_thread == thisTid(), "Cannot call another thread's work handler!");
+
+        while (receiveTimeout(dur!"msecs"(1), (immutable DelegateMessage message) {
+                message.dg();
+            }))
+        {
+            // Emptying the message queue.
+        }
+    }
+}
+
+unittest
+{
+    import std.concurrency : thisTid, Tid;
+
+    bool safe;
+    Tid tid = thisTid;
+
+    auto s = CurrentThreadScheduler.instance;
+
+    void test()
+    {
+        assert(thisTid == tid);
+        safe = true;
+    }
+
+    s.run(&test);
+
+    s.work();
+
+    assert(safe);
+
+    safe = false;
+
+    taskScheduler.run(() { s.run(&test); });
+
+    s.work();
+
+    assert(safe);
+
+    newThreadScheduler.run(() {
+
+        assert(s != currentThreadScheduler.instance);
+
+        bool threw;
+        try
+        {
+            s.work();
+        }
+        catch (Exception)
+        {
+            threw = true;
+        }
+        finally
+        {
+            assert(threw);
+        }
+    });
 }
 
 class ScheduledObserver(T) : Observer!T
