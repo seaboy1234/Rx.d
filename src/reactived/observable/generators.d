@@ -3,10 +3,12 @@ module reactived.observable.generators;
 import std.functional;
 import std.traits;
 import std.range.primitives;
+import std.datetime;
 
 import reactived.observer;
 import reactived.disposable : Disposable, createDisposable;
 import reactived.observable;
+import reactived.scheduler;
 
 import disposable = reactived.disposable;
 
@@ -414,4 +416,48 @@ unittest
 
     unfold!(int, int)(1, v => v < 25, v => v + 1, v => v).dump("unfold(1)");
     unfold!(int, int)(1, v => v < 100, v => v + 1, v => v).take(10).dump("unfold(1).take(10)");
+}
+
+Observable!size_t interval(Duration duration)
+{
+    return interval(duration, taskScheduler);
+}
+
+Observable!size_t interval(Duration duration, Scheduler scheduler)
+{
+    import core.thread : Thread;
+
+    Disposable subscribe(Observer!size_t observer)
+    {
+        size_t state;
+        disposable.BooleanDisposable subscription = new disposable.BooleanDisposable();
+        scheduler.run((self) {
+            Thread.getThis().sleep(duration);
+            observer.onNext(state++);
+
+            if (!subscription.isDisposed)
+            {
+                self();
+            }
+        });
+
+        return subscription;
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    bool completed;
+    interval(dur!"msecs"(10)).take(10).subscribe(v => assert(v < 10), () {
+        completed = true;
+    });
+
+    while (!completed)
+    {
+    }
+
+    // FAILS: Runs forever despite completing. 
+    // interval(dur!"msecs"(10), newThreadScheduler).take(10).subscribe(v => assert(v < 10));
 }
