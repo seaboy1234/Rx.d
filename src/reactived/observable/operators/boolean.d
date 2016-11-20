@@ -156,6 +156,109 @@ unittest
     range(0, 10).contains(12).subscribe(value => assert(!value, "value should be false."));
 }
 
+/**
+    Given one or more source Observables, emit events from whichever emits an event first.
+*/
+Observable!T amb(T)(Observable!T[] observables...)
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        Observable!T selected;
+
+        class AmbObserver : Observer!T
+        {
+            private Observable!T _observable;
+            private Disposable _subscription;
+
+            this(Observable!T observable)
+            {
+                _observable = observable;
+                _subscription = observable.subscribe(this);
+            }
+
+            void onNext(T value)
+            {
+                if (pick())
+                {
+                    observer.onNext(value);
+                }
+            }
+
+            void onError(Throwable e)
+            {
+                if (pick())
+                {
+                    observer.onError(e);
+                }
+            }
+
+            void onCompleted()
+            {
+                if (pick())
+                {
+                    observer.onCompleted();
+                }
+            }
+
+            bool pick()
+            {
+                synchronized
+                {
+                    if (selected is null)
+                    {
+                        selected = _observable;
+                        return true;
+                    }
+                    else if (selected != _observable)
+                    {
+                        if (_subscription !is null)
+                        {
+                            _subscription.dispose();
+                        }
+                        return false;
+                    }
+                    return true;
+                }
+            }
+        }
+
+        CompositeDisposable subscription = new CompositeDisposable();
+        foreach (observable; observables)
+        {
+            subscription.add(observable.subscribe(new AmbObserver(observable)));
+        }
+
+        return subscription;
+    }
+
+    return create(&subscribe);
+}
+
+///
+unittest
+{
+    import std.datetime : dur;
+    import std.stdio : writeln;
+
+    string value;
+
+    // dfmt off
+    amb(
+        timer(dur!"seconds"(1)).map!(v => "first"),
+        timer(dur!"msecs"(100)).map!(v => "second"),
+        timer(dur!"msecs"(1)).map!(v => "third")
+    ).subscribe(v => assert("third" == (value = v)));
+    // dfmt on
+
+    while (value is null)
+    {
+    }
+
+    writeln("amb() picked the ", value, " value");
+
+    // => amb() picked the third value
+}
+
 /++
     Creates an Observable which is guaranteed to return at least one value.  
     If the source Observable is empty, returns the default value of T.
