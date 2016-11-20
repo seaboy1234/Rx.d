@@ -150,11 +150,23 @@ class BooleanDisposable : Disposable
     import core.sync.mutex : Mutex;
 
     private bool _isDisposed;
+    private void delegate() _dispose;
     private Mutex _mutex;
 
     this()
     {
+        this(empty);
         _mutex = new Mutex(this);
+    }
+
+    this(Disposable wrap)
+    {
+        this(&wrap.dispose);
+    }
+
+    this(void delegate() dispose)
+    {
+        _dispose = dispose;
     }
 
     bool isDisposed() inout @safe @property
@@ -170,6 +182,7 @@ class BooleanDisposable : Disposable
         synchronized (_mutex)
         {
             _isDisposed = true;
+            _dispose();
         }
     }
 }
