@@ -461,3 +461,94 @@ unittest
     // FAILS: Runs forever despite completing. 
     // interval(dur!"msecs"(10), newThreadScheduler).take(10).subscribe(v => assert(v < 10));
 }
+
+Observable!size_t timer(Duration start)
+{
+    return timer(start, taskScheduler);
+}
+
+Observable!size_t timer(Duration start, Scheduler scheduler)
+{
+    import core.thread : Thread;
+
+    Disposable subscribe(Observer!size_t observer)
+    {
+        disposable.BooleanDisposable subscription = new disposable.BooleanDisposable();
+
+        scheduler.run(() {
+            Thread.getThis().sleep(start);
+
+            if (!subscription.isDisposed)
+            {
+                observer.onNext(0);
+                observer.onCompleted();
+            }
+        });
+
+        return subscription;
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    int count;
+
+    // dfmt off
+
+    timer(dur!"msecs"(100)).subscribe((v) { 
+        assert(v == 0); 
+        count++; 
+    }, () {
+        assert(count == 1);
+    });
+
+    // dfmt on
+
+    while (count != 1)
+    {
+    }
+}
+
+Observable!size_t timer(Duration start, Duration period)
+{
+    return timer(start, period, taskScheduler);
+}
+
+Observable!size_t timer(Duration start, Duration period, Scheduler scheduler)
+{
+    import core.thread : Thread;
+
+    Disposable subscribe(Observer!size_t observer)
+    {
+        size_t state;
+        disposable.BooleanDisposable subscription = new disposable.BooleanDisposable();
+        scheduler.run({
+            Thread.getThis().sleep(start);
+
+            scheduler.run((self) {
+                observer.onNext(state++);
+                Thread.getThis().sleep(period);
+
+                if (!subscription.isDisposed)
+                {
+                    self();
+                }
+            });
+        });
+
+        return subscription;
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    bool completed;
+
+    timer(dur!"msecs"(10), dur!"msecs"(10)).take(10).subscribe(v => assert(v < 10), () {
+        completed = true;
+    });
+}
