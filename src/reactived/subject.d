@@ -41,6 +41,10 @@ class Subject(T) : Observable!T, Observer!T
     /// Causes the sequence to complete. 
     void onCompleted()
     {
+        if(_completed)
+        {
+            return;
+        }
         try
         {
             foreach (observer; _observers)
@@ -59,6 +63,10 @@ class Subject(T) : Observable!T, Observer!T
     /// Causes the sequence to complete with the specified error.
     void onError(Throwable error)
     {
+        if(_completed)
+        {
+
+        }
         _completed = true;
 
         foreach (observer; _observers)
@@ -79,7 +87,7 @@ class Subject(T) : Observable!T, Observer!T
             observer.onCompleted();
             return empty();
         }
-        
+
         _observers ~= observer;
 
         return createDisposable(() {
@@ -261,5 +269,5 @@ unittest
 
     auto masked = subject.asObservable();
 
-    assert(typeid(typeof(masked)) != typeid(typeof(subject)), "");
+    assert(!is(masked : Subject!int));
 }
