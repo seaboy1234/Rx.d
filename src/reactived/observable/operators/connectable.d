@@ -96,7 +96,8 @@ unittest
 
     currentThreadScheduler.work();
 
-    o.subscribe((x) => assert(items[$ - 1] == x));
+    int index;
+    o.subscribe((x) => assert(items[index++] == x));
 
     currentThreadScheduler.work();
 }
