@@ -74,7 +74,12 @@ class Subject(T) : Observable!T, Observer!T
     {
         import std.algorithm : countUntil, remove;
 
-        enforce(!_completed, "This Observable has already completed.");
+        if(_completed)
+        {
+            observer.onCompleted();
+            return empty();
+        }
+        
         _observers ~= observer;
 
         return createDisposable(() {
@@ -133,7 +138,7 @@ class ReplaySubject(T) : Subject!(T)
     private struct SubjectItem
     {
         SysTime time;
-        T item;
+        void delegate(Observer!T) dg;
     }
 
     /// Instantiates the ReplaySubject with the max Duration.
@@ -150,21 +155,38 @@ class ReplaySubject(T) : Subject!(T)
 
     override void onNext(T value)
     {
-        _items ~= SubjectItem(Clock.currTime(), value);
+        _items ~= SubjectItem(Clock.currTime(), (observer) {
+            observer.onNext(value);
+        });
         super.onNext(value);
+    }
+
+    override void onError(Throwable error)
+    {
+        _items ~= SubjectItem(Clock.currTime(), (observer) {
+            observer.onError(error);
+        });
+        super.onError(error);
+    }
+
+    override void onCompleted()
+    {
+        _items ~= SubjectItem(Clock.currTime(), (observer) {
+            observer.onCompleted();
+        });
+        super.onCompleted();
     }
 
     override Disposable subscribe(Observer!T observer)
     {
         import std.algorithm : filter = filter, countUntil, remove;
 
-        auto disposable = super.subscribe(observer);
         try
         {
             auto range = _items.filter!(g => g.time - Clock.currTime() <= _window);
             foreach (item; range)
             {
-                observer.onNext(item.item);
+                item.dg(observer);
             }
 
             foreach (item; range)
@@ -178,6 +200,7 @@ class ReplaySubject(T) : Subject!(T)
         {
             onError(e);
         }
+        auto disposable = super.subscribe(observer);
         return disposable;
     }
 }
