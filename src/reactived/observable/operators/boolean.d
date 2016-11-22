@@ -313,3 +313,36 @@ unittest
     range(0, 5).defaultIfEmpty(10).all!(a => a != 10)
         .subscribe(value => assert(value, "value should be true."));
 }
+
+Observable!bool sequenceEqual(T)(Observable!T source, T[] sequence)
+{
+    Disposable subscribe(Observer!bool observer)
+    {
+        int index;
+        void onNext(T value)
+        {
+            if (index >= sequence.length || value != sequence[index++])
+            {
+                observer.onNext(false);
+                observer.onCompleted();
+            }
+        }
+
+        void onCompleted()
+        {
+            observer.onNext(true);
+            observer.onCompleted();
+        }
+
+        return source.subscribe(&onNext, &onCompleted, &observer.onError);
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    range(0, 4).sequenceEqual([0, 1, 2, 3]).subscribe(v => assert(v));
+    range(1, 4).sequenceEqual([0, 1, 2, 3]).subscribe(v => assert(!v));
+    single(10).sequenceEqual([10]).subscribe(v => assert(v));
+}
