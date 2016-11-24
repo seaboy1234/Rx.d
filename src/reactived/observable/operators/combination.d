@@ -53,3 +53,56 @@ unittest
 
     o.sequenceEqual([0, 1, 2, 3]).subscribe(v => assert(v));
 }
+
+Observable!T endWith(T)(Observable!T source, T value)
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        void onCompleted()
+        {
+            observer.onNext(value);
+            observer.onCompleted();
+        }
+
+        return source.subscribe(&observer.onNext, &onCompleted, &observer.onError);
+    }
+
+    return create(&subscribe);
+}
+
+template endWith(Range) if (isRange!(Range) && is(ElementType!Range : T))
+{
+    Observable!T endWith(T)(Observable!T source, Range range)
+    {
+        Disposable subscribe(Observer!T observer)
+        {
+            void onCompleted()
+            {
+                foreach (value; range)
+                {
+                    observer.onNext(value);
+                }
+            }
+
+            return source.subscribe(&observer.onNext, &onCompleted, &observer.onError);
+        }
+
+        return create(&subscribe);
+    }
+}
+
+unittest
+{
+    import reactived.subject : Subject;
+    import reactived.observable.operators.boolean : sequenceEqual;
+
+    auto s = new Subject!int();
+
+    s.onNext(1);
+    s.onNext(2);
+    s.onNext(3);
+
+    auto o = s.endWith(4);
+
+    o.sequenceEqual([1, 2, 3, 4]).subscribe(v => assert(v));
+}
