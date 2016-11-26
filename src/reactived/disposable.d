@@ -186,6 +186,72 @@ class BooleanDisposable : Disposable
     }
 }
 
+class ObjectDisposedException : Exception
+{
+    /**
+     * Creates a new instance of ObjectDisposedException. The next parameter 
+     * is used internally and should always be $(D null) when passed by user 
+     * code. This constructor does not automatically throw the newly-created
+     * Exception; the $(D throw) statement should be used for that purpose.
+     */
+    @nogc @safe pure nothrow this(string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+    {
+        super("Cannot access a disposed object", file, line, next);
+    }
+
+    /// ditto
+    @nogc @safe pure nothrow this(Throwable next, string file = __FILE__, size_t line = __LINE__)
+    {
+        super("Cannot access a disposed object", file, line, next);
+    }
+}
+
+class AssignmentDisposable : Disposable
+{
+    private
+    {
+        bool _disposed;
+        Disposable _dispose;
+    }
+
+    this()
+    {
+        this(empty());
+    }
+
+    this(Disposable value)
+    {
+        _dispose = value;
+    }
+
+    Disposable disposable() @property
+    {
+        if(_disposed)
+        {
+            throw new ObjectDisposedException();
+        }
+
+        return _dispose;
+    }
+
+    void disposable(Disposable value) @property
+    {
+        _dispose.dispose();
+        _dispose = value;
+    }
+
+    void dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _dispose.dispose();
+    }
+}
+
 /// Creates a Disposable which has the provided onDisposed delegate as its dispose method.
 Disposable createDisposable(void delegate() onDisposed) @safe
 {
