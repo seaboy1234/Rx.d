@@ -116,3 +116,45 @@ Observable!T continueWith(T)(Observable!T source, Observable!T next)
 
     return create(&subscribe);
 }
+
+template catchException(TException) if (is(TException : Exception))
+{
+    Observable!T catchException(T)(Observable!T source, Observable!T delegate(TException) onError)
+    {
+        Disposable subscribe(Observer!T observer)
+        {
+            CompositeDisposable subscription = new CompositeDisposable();
+            
+            void onError_(Throwable e)
+            {
+                if (auto ex = cast(TException) e)
+                {
+                    subscription.add(onError(ex).subscribe(observer));
+                }
+            }
+
+            subscription.add(source.subscribe(&observer.onNext, &observer.onCompleted, &onError_));
+
+            return subscription;
+        }
+
+        return create(&subscribe);
+    }
+}
+
+unittest
+{
+    import reactived : single, sequenceEqual;
+
+    assert(create!int((Observer!int observer) {
+        observer.onNext(1);
+        observer.onNext(2);
+
+        observer.onError(new Exception("Error123"));
+        return delegate()
+        {
+        };
+    }).catchException!Exception((Exception) {
+        return single(3);
+    }).sequenceEqual([1, 2, 3]), "Excepted true.  Got false.");   
+}
