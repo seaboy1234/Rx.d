@@ -80,7 +80,7 @@ unittest
     assert(completed);
 }
 
-auto asTask(T)(Observable!T source)
+auto asTask(T)(Observable!T source, TaskPool pool = taskPool)
 {
     static T getValue(Observable!T source)
     {
@@ -119,7 +119,11 @@ auto asTask(T)(Observable!T source)
         return lastValue;
     }
 
-    return task!getValue(source);
+    auto t = task!getValue(source);
+
+    pool.put(t);
+
+    return t;
 }
 
 unittest
@@ -132,8 +136,6 @@ unittest
     auto t = timer(dur!"seconds"(1)).map!(v => 100).doOnNext((int v) {
         writeln("asTask(", v, ")");
     }).asTask();
-
-    taskPool.put(t);
 
     auto val = t.yieldForce();
 
