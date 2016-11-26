@@ -143,3 +143,65 @@ unittest
     test(1, 1, 1, 1, 1, 1);
     test(10, 0);
 }
+
+Observable!T min(T)(Observable!T source) if (isNumeric!T)
+{
+    Disposable subscribe(Observer!T observer)
+    {
+
+        T min = T.max;
+
+        void onNext(T value)
+        {
+            if (value < min)
+            {
+                min = value;
+            }
+        }
+
+        void onCompleted()
+        {
+            observer.onNext(min);
+        }
+
+        return source.subscribe(&onNext, &onCompleted, &observer.onError);
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    import reactived.subject : Subject;
+
+    void test(T...)(T args) if (T.length > 1 && isNumeric!(T[0]))
+    {
+        static import std.algorithm;
+        import std.string : format;
+
+        alias K = T[0];
+        alias O = Observable!K;
+
+        Subject!K s = new Subject!K();
+        O o = s.min();
+
+        K expected = std.algorithm.min(args);
+        K actual;
+
+        o.subscribe((v) { actual = v; });
+
+        foreach (val; args)
+        {
+            s.onNext(val);
+        }
+
+        s.onCompleted();
+
+        assert(expected == actual, format("Expected %d. Got %d.", expected, actual));
+    }
+
+    test(1, 2, 5, 8, 9, 1);
+    test(2f, 3, 4, 8, 1, 0);
+    test(1, 1, 1, 1, 1, 1);
+    test(10, 0);
+}
