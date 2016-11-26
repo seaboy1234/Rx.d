@@ -242,8 +242,7 @@ unittest
     assert(safe);
 
     newThreadScheduler.run(() {
-
-        assert(s != currentThreadScheduler.instance);
+        assert(s != currentThreadScheduler);
 
         bool threw;
         try
