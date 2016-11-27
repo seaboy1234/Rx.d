@@ -137,7 +137,8 @@ unittest
     s.onCompleted();
 }
 
-Observable!(T[]) buffer(T)(Observable!T source, Duration window, size_t count = 0, Scheduler scheduler = taskScheduler)
+Observable!(T[]) buffer(T)(Observable!T source, Duration window, size_t count = 0,
+        Scheduler scheduler = taskScheduler)
 {
     Disposable subscribe(Observer!(T[]) observer)
     {
@@ -159,7 +160,11 @@ Observable!(T[]) buffer(T)(Observable!T source, Duration window, size_t count = 
             synchronized (mutex.writer)
             {
                 items ~= value;
-                if(count > 0 && items.length > count)
+            }
+
+            synchronized (mutex.reader)
+            {
+                if (count > 0 && items.length > count)
                 {
                     flush();
                 }
