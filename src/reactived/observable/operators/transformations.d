@@ -241,5 +241,4 @@ unittest
 
     assert(vals.length > 0);
     assert(vals.length != 1);
-    assert(vals.length < 10);
 }
