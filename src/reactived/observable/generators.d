@@ -26,7 +26,15 @@ Observable!T create(T)(Disposable delegate(Observer!T) subscribe) pure @safe
 
         Disposable subscribe(Observer!T observer)
         {
-            return _subscribe(observer);
+            try
+            {
+                return _subscribe(observer);
+            }
+            catch (Exception e)
+            {
+                observer.onError(e);
+                return disposable.empty();
+            }
         }
     }
 
