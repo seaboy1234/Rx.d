@@ -155,7 +155,6 @@ class BooleanDisposable : Disposable
     this()
     {
         this(empty);
-        _mutex = new Mutex(this);
     }
 
     this(Disposable wrap)
@@ -166,6 +165,7 @@ class BooleanDisposable : Disposable
     this(void delegate() dispose)
     {
         _dispose = dispose;
+        _mutex = new Mutex(this);
     }
 
     bool isDisposed() inout @safe @property
