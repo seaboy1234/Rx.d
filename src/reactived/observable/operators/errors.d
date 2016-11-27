@@ -1,6 +1,7 @@
 module reactived.observable.operators.errors;
 
-import reactived.disposable : CompositeDisposable, Disposable;
+import reactived.disposable : AssignmentDisposable, CompositeDisposable,
+    Disposable;
 import reactived.observable.types;
 import reactived.observable.generators : create;
 import reactived.observer;
@@ -124,7 +125,7 @@ template catchException(TException) if (is(TException : Exception))
         Disposable subscribe(Observer!T observer)
         {
             CompositeDisposable subscription = new CompositeDisposable();
-            
+
             void onError_(Throwable e)
             {
                 if (auto ex = cast(TException) e)
@@ -133,7 +134,8 @@ template catchException(TException) if (is(TException : Exception))
                 }
             }
 
-            subscription.add(source.subscribe(&observer.onNext, &observer.onCompleted, &onError_));
+            subscription.add(source.subscribe(&observer.onNext,
+                    &observer.onCompleted, &onError_));
 
             return subscription;
         }
@@ -147,14 +149,86 @@ unittest
     import reactived : single, sequenceEqual;
 
     assert(create!int((Observer!int observer) {
-        observer.onNext(1);
-        observer.onNext(2);
+            observer.onNext(1);
+            observer.onNext(2);
 
-        observer.onError(new Exception("Error123"));
-        return delegate()
+            observer.onError(new Exception("Error123"));
+            return delegate()
+            {
+            };
+        }).catchException!Exception((Exception) {
+            return single(3);
+        }).sequenceEqual([1, 2, 3]), "Excepted true.  Got false."); 
+}
+
+Observable!T retry(T)(Observable!T source)
+{
+    return source.retry(-1);
+}
+
+Observable!T retry(T)(Observable!T source, size_t retryCount)
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        AssignmentDisposable subscription = new AssignmentDisposable();
+        void onError(Throwable e)
         {
-        };
-    }).catchException!Exception((Exception) {
-        return single(3);
-    }).sequenceEqual([1, 2, 3]), "Excepted true.  Got false.");   
+            import std.stdio : writeln;
+            writeln("threw");
+            if (--retryCount != 0)
+            {
+                subscription.disposable = source.subscribe(&observer.onNext,
+                        &observer.onCompleted, &onError);
+            }
+            else
+            {
+                observer.onError(e);
+            }
+        }
+
+        subscription.disposable = source.subscribe(&observer.onNext,
+                &observer.onCompleted, &onError);
+
+        return subscription;
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    import std.exception : assertNotThrown;
+    import std.random : Random, unpredictableSeed;
+    import reactived.disposable : empty;
+    import reactived.observable.conversions : asTask;
+
+    int autoThrow = 11;
+    bool threw;
+
+    void randomThrow()
+    {
+        auto rng = Random(unpredictableSeed);
+        if (rng.front() % 10 == 1 || --autoThrow == 0)
+        {
+            threw = true;
+            autoThrow = 11;
+            throw new Exception("FAILED");
+        }
+    }
+
+    Disposable subscribe(Observer!int observer)
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            randomThrow();
+            observer.onNext(i);
+        }
+        observer.onCompleted();
+
+        return empty();
+    }
+
+    auto o = create(&subscribe).retry();
+
+    assertNotThrown(o.asTask().yieldForce());
 }
