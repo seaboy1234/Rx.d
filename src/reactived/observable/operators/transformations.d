@@ -1,10 +1,14 @@
 module reactived.observable.operators.transformations;
 
 import std.functional;
+import std.datetime;
+
+import core.sync.rwmutex;
 
 import reactived.observable;
 import reactived.observer;
 import reactived.disposable;
+import reactived.scheduler;
 import disposable = reactived.disposable;
 
 /// Returns the first element in the source Observable sequence.
@@ -83,7 +87,6 @@ unittest
                 "value should be string"));
 }
 
-
 /// Applies an accumulator function to all values in the source Observable and emits the current result with each value.
 template scan(alias fun)
 {
@@ -132,4 +135,106 @@ unittest
     assert(value == 10);
 
     s.onCompleted();
+}
+
+Observable!(T[]) buffer(T)(Observable!T source, Duration window, size_t count = 0, Scheduler scheduler = taskScheduler)
+{
+    Disposable subscribe(Observer!(T[]) observer)
+    {
+        BooleanDisposable subscription;
+        T[] items;
+        ReadWriteMutex mutex = new ReadWriteMutex();
+
+        void flush()
+        {
+            synchronized (mutex.reader)
+            {
+                observer.onNext(items);
+                items = T[].init;
+            }
+        }
+
+        void onNext(T value)
+        {
+            synchronized (mutex.writer)
+            {
+                items ~= value;
+                if(count > 0 && items.length > count)
+                {
+                    flush();
+                }
+            }
+        }
+
+        void onCompleted()
+        {
+            flush();
+            observer.onCompleted();
+        }
+
+        void onError(Throwable e)
+        {
+            flush();
+            observer.onError(e);
+        }
+
+        void run(void delegate() self)
+        {
+            import core.thread : Thread;
+
+            Thread.sleep(window);
+
+            flush();
+
+            if (!subscription.isDisposed)
+            {
+                self();
+            }
+        }
+
+        subscription = new BooleanDisposable(source.subscribe(&onNext, &onCompleted, &onError));
+
+        scheduler.run(&run);
+
+        return subscription;
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    auto o = create((Observer!string observer) {
+        import std.random : uniform;
+        import std.range : iota;
+        import core.thread : Thread;
+
+        BooleanDisposable subscription = new BooleanDisposable();
+
+        enum string[] MESSAGES = ["ABC", "DEF", "GHI", "JKL", "MNO", "PQR", "STU", "VWX", "YZA"];
+
+        taskScheduler.run((self) {
+            foreach (value; iota(0, uniform(1, 10)))
+            {
+                observer.onNext(MESSAGES[uniform(0, $)]);
+            }
+
+            Thread.sleep(dur!"msecs"(uniform(10, 500)));
+
+            if (!subscription.isDisposed)
+            {
+                self();
+            }
+        });
+
+        return subscription;
+    });
+
+    auto t = o.buffer(dur!"seconds"(1), 10).take(2).asTask();
+
+    string[] vals = t.yieldForce();
+
+    assert(vals.length > 0);
+    assert(vals.length != 1);
+    assert(vals.length < 10);
 }
