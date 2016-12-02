@@ -6,7 +6,7 @@ import std.range.primitives;
 import std.datetime;
 
 import reactived.observer;
-import reactived.disposable : Disposable, createDisposable;
+import reactived.disposable : Disposable, BooleanDisposable, createDisposable;
 import reactived.observable;
 import reactived.scheduler;
 
@@ -243,85 +243,64 @@ unittest
     range(10, 10).length().subscribe(count => assert(count == 10));
 }
 
-/++
-    Creates an Observable sequence which lazily evaluates action.
-
-    action will only be invoked once--on the first subscription of an Observer--and the value cached.
-
-    See_Also:
-    Observable!Unit start(F)(F action)
-+/
-Observable!(ReturnTypeOrUnit!(F)) start(F)(F action) if (isCallable!F)
+/**
+    Transforms a function call into an Observable which completes when the call completes.
+*/
+template start(alias fun, Args...) if (isCallable!fun)
 {
-    import reactived.subject : Subject;
-
-    static import std.parallelism;
-
-    enum isVoid = is(typeof(action()) == void);
-
-    static if (!isVoid)
-    {
-        alias T = typeof(action());
-    }
-    else
+    alias ReturnType = typeof(fun(Args.init));
+    static if (is(ReturnType == void))
     {
         alias T = Unit;
     }
-
-    class StartObservable : Subject!(T)
+    else
     {
-        T value;
-        bool hasValue;
-        bool started;
-
-        override Disposable subscribe(Observer!(T) observer)
+        alias T = ReturnType;
+    }
+    Observable!T start(Args args)
+    {
+        Disposable subscribe(Observer!T observer)
         {
-            if (!started)
-            {
-                T run() @trusted
+            BooleanDisposable subscription = new BooleanDisposable();
+            taskScheduler.run(() {
+                try
                 {
-                    static if (isVoid)
+                    static if (!is(ReturnType == void))
                     {
-                        action();
-                        setValue(Unit());
-                        return Unit();
+                        ReturnType value = fun(args);
+                        if (!subscription.isDisposed())
+                        {
+                            observer.onNext(value);
+                        }
+
                     }
                     else
                     {
-                        auto value = action();
-                        setValue(value);
-                        return value;
+                        fun(Args);
+                        if (!subscription.isDisposed())
+                        {
+                            observer.onNext(Unit());
+                        }
                     }
                 }
+                catch (Exception e)
+                {
+                    if (!subscription.isDisposed)
+                    {
+                        observer.onError(e);
+                    }
+                }
+                if (!subscription.isDisposed)
+                {
+                    observer.onCompleted();
+                }
+            });
 
-                started = true;
-
-                auto t = std.parallelism.task(&run);
-                t.executeInNewThread();
-            }
-            if (hasValue)
-            {
-                observer.onNext(value);
-                observer.onCompleted();
-                return disposable.empty();
-            }
-            return super.subscribe(observer);
+            return subscription;
         }
 
-    private:
-        void setValue(T val)
-        {
-            hasValue = true;
-            static if (!isVoid)
-            {
-                value = val;
-            }
-            onNext(val);
-            onCompleted();
-        }
+        return create(&subscribe);
     }
-
-    return new StartObservable();
 }
 
 ///
@@ -339,16 +318,16 @@ unittest
         return 3;
     }
 
-    start(() => true).subscribe(value => assert(value, "value should be true."));
+    start!(() => true).subscribe(value => assert(value, "value should be true."));
 
-    start(&test).subscribe(value => assert(value == 3, "value should be 3."));
+    start!test().subscribe(value => assert(value == 3, "value should be 3."));
 
     void test2(int)
     {
         assert(0, "should not be called");
     }
 
-    auto testStart = start(&test);
+    auto testStart = start!test();
 
     testStart.subscribe(&test2).dispose();
 
@@ -369,23 +348,23 @@ unittest
         published = true;
     }
 
-    start(&test3).subscribe(&setPublished, () => assert(published, "onNext should be called."));
+    start!test3().subscribe(&setPublished, () => assert(published, "onNext should be called."));
 
     while (!published)
     {
     }
-}
+    published = false;
 
-template ReturnTypeOrUnit(F) if (isCallable!F)
-{
-    static if (is(typeof(F.init()) == void))
+    int multiArgs(int a, int b)
     {
-        alias ReturnTypeOrUnit = typeof(Unit());
+        assert(!published);
+        published = true;
+        return a + b;
     }
-    else
-    {
-        alias ReturnTypeOrUnit = typeof(F.init());
-    }
+
+    start!multiArgs(2, 3).observeOn(currentThreadScheduler).subscribe(v => assert(v == 5));
+    currentThreadScheduler.work();
+    assert(published);
 }
 
 Observable!T unfold(T, Result)(T seed, bool delegate(T) condition,
