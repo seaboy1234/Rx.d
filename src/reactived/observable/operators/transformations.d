@@ -87,6 +87,50 @@ unittest
                 "value should be string"));
 }
 
+template flatMap(alias fun)
+{
+    Observable!(typeof(unaryFun!fun(T.init)).ElementType) flatMap(T)(Observable!T source)
+    {
+        alias ReturnType = typeof(unaryFun!fun(T.init));
+        alias ElementType = ReturnType.ElementType;
+
+        Disposable subscribe(Observer!ElementType observer)
+        {
+            CompositeDisposable subscription = new CompositeDisposable();
+
+            void onCompleted()
+            {
+                subscription.dispose();
+                observer.onCompleted();
+            }
+
+            void onNext(T value)
+            {
+                ReturnType mapped = unaryFun!fun(value);
+                subscription.add(mapped.subscribe(&observer.onNext, &observer.onError));
+            }
+
+            subscription.add(source.subscribe(&onNext, &onCompleted, &observer.onError));
+
+            return subscription;
+        }
+
+        return create(&subscribe);
+    }
+}
+
+unittest
+{
+    char toLetter(int value)
+    {
+        return cast(char)(value + 64);
+    }
+
+    assert(range(0, 3).flatMap!(x => single(toLetter(x))).sequenceEqual(['A', 'B', 'C']));
+
+    assert(range(0, 3).flatMap!(x => range(0, x)).sequenceEqual([1, 1, 2, 1, 2, 3]));
+}
+
 /// Applies an accumulator function to all values in the source Observable and emits the current result with each value.
 template scan(alias fun)
 {
