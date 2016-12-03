@@ -141,3 +141,63 @@ unittest
 
     assert(val == 100, format("Expected 100.  Got %d.", val));
 }
+
+auto asRange(T)(Observable!T source)
+{
+    static struct RangeObserver
+    {
+        private Observable!T _source;
+
+        this(Observable!T source)
+        {
+            _source = source;
+        }
+
+        int opApply(int delegate(ref T x) dg)
+        {
+            int completed = 0;
+
+            //dfmt off
+            BooleanDisposable subscription;
+
+            subscription = new BooleanDisposable(_source.observeOn(currentThreadScheduler).subscribe(
+            (v) {
+                completed = dg(v);
+
+                if (completed)
+                {
+                    subscription.dispose();
+                }
+            }, { 
+                subscription.dispose(); 
+            }, (e) { 
+                subscription.dispose();
+                throw e; 
+            }));
+
+            //dfmt on
+
+            while (!subscription.isDisposed())
+            {
+                currentThreadScheduler.work();
+            }
+
+            return completed;
+        }
+    }
+
+    return RangeObserver(source);
+}
+
+unittest
+{
+    import reactived : range, map;
+    import std.stdio : writeln;
+    import std.math : sqrt;
+
+    foreach (x; range(0, 10).map!(x => x ^^ 2).asRange())
+    {
+        writeln("asRange() => ", x);
+    }
+    writeln("asRange() => completed");
+}
