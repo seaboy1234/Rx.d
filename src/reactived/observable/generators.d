@@ -217,9 +217,9 @@ unittest
 }
 
 /// Create an Observable sequence which emits a range of numerics.
-Observable!T range(T)(T start, T count) pure @safe nothrow if (isNumeric!T)
+Observable!T range(T)(T start, T count, T step = 1) pure @safe nothrow if (isNumeric!T)
 {
-    return unfold!(T, T)(start, v => v - start < count, v => v + 1, v => v);
+    return unfold!(T, T)(start, v => v - start < count * step, v => v + step, v => v);
 }
 
 ///
@@ -241,6 +241,10 @@ unittest
     +/
 
     range(10, 10).length().subscribe(count => assert(count == 10));
+
+    range(0, 4, 2).sequenceEqual([0, 2, 4, 6]).subscribe(x => assert(x));
+
+    range(0, 5).sequenceEqual([0, 1, 2, 3, 4]).subscribe(x => assert(x));
 }
 
 /**
