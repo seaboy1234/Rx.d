@@ -21,14 +21,16 @@ interface Observable(T)
             private bool _completed;
             void onNext(T value)
             {
-                if (_completed)
-                {
-                    return;
-                }
-
                 try
                 {
-                    onNext_(value);
+                    synchronized (this)
+                    {
+                        if (_completed)
+                        {
+                            return;
+                        }
+                        onNext_(value);
+                    }
                 }
                 catch (Exception e)
                 {
@@ -38,22 +40,28 @@ interface Observable(T)
 
             void onCompleted()
             {
-                if (_completed)
+                synchronized (this)
                 {
-                    return;
+                    if (_completed)
+                    {
+                        return;
+                    }
+                    _completed = true;
+                    onCompleted_();
                 }
-                _completed = true;
-                onCompleted_();
             }
 
             void onError(Throwable error)
             {
-                if (_completed)
+                synchronized (this)
                 {
-                    return;
-                }
+                    if (_completed)
+                    {
+                        return;
+                    }
 
-                onError_(error);
+                    onError_(error);
+                }
             }
         }
 
@@ -107,7 +115,7 @@ interface GroupedObservable(TKey, TValue) : Observable!TValue
 interface ConnectableObservable(T) : Observable!T
 {
     void connect();
-} 
+}
 
 Disposable subscribe(T, O)(Observable!T observable, O observer)
         if (isObserver!(O, T))
@@ -191,6 +199,80 @@ unittest
     assert(isObservable!(Observable!(int), int));
     assert(!isObservable!(B, int), "B is not observable");
     assert(isObservable!(A, int), "A is observable");
+}
+
+Observable!(E) synchronize(O, E = O.ElementType)(O observable)
+        if (isObservable!(O, E))
+{
+    import reactived : create;
+
+    Disposable subscribe(Observer!(E) observer)
+    {
+        return asObservable!(O, E)(observable).subscribe(&observer.onNext,
+                &observer.onCompleted, &observer.onError);
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    bool completed;
+
+    struct JankyObservable
+    {
+        alias ElementType = int;
+
+        Disposable subscribe(Observer!int observer)
+        {
+            import reactived : taskScheduler;
+
+            taskScheduler.run(() { observer.onNext(1); });
+            taskScheduler.run(() { observer.onNext(2); });
+            taskScheduler.run(() { observer.onNext(3); });
+            taskScheduler.run(() { observer.onCompleted(); });
+
+            return createDisposable({  });
+        }
+    }
+
+    class UnsuspectingObserver : Observer!int
+    {
+        bool callingMethod;
+
+        void callMethod()
+        {
+            import core.thread : Thread;
+            import std.datetime : dur;
+
+            assert(!callingMethod);
+            assert(!completed);
+            callingMethod = true;
+            Thread.sleep(dur!"msecs"(100));
+            callingMethod = false;
+        }
+
+        void onNext(int)
+        {
+            callMethod();
+        }
+
+        void onCompleted()
+        {
+            callMethod();
+            completed = true;
+        }
+
+        void onError(Throwable)
+        {
+            callMethod();
+        }
+    }
+
+    JankyObservable().synchronize().subscribe(new UnsuspectingObserver());
+    while (!completed)
+    {
+    }
 }
 
 /// Represents a value with no information.
