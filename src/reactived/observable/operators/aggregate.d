@@ -43,7 +43,7 @@ unittest
 }
 
 /// Create an Observable which returns the length of the source observable.
-Observable!size_t length(T)(Observable!T source)
+Observable!size_t length(T)(Observable!T source) pure @safe nothrow
 {
     Disposable subscribe(Observer!size_t observer)
     {
@@ -71,7 +71,7 @@ unittest
     range(0, 10).length().subscribe(value => assert(value == 10, "value should be 10"));
 }
 
-Observable!T max(T)(Observable!T source) if (isNumeric!T)
+Observable!T max(T)(Observable!T source) pure @safe nothrow if (isNumeric!T)
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -144,7 +144,7 @@ unittest
     test(10, 0);
 }
 
-Observable!T min(T)(Observable!T source) if (isNumeric!T)
+Observable!T min(T)(Observable!T source) pure @safe nothrow if (isNumeric!T)
 {
     Disposable subscribe(Observer!T observer)
     {

@@ -10,7 +10,7 @@ import reactived.scheduler;
 /**
     If source encounters an error, begin emitting notifications from next.
 */
-Observable!T onErrorContinueWith(T)(Observable!T source, Observable!T next)
+Observable!T onErrorContinueWith(T)(Observable!T source, Observable!T next) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -52,7 +52,7 @@ unittest
 /**
     When source completes, begin emitting notifications from next.
 */
-Observable!T onCompletedContinueWith(T)(Observable!T source, Observable!T next)
+Observable!T onCompletedContinueWith(T)(Observable!T source, Observable!T next) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -94,7 +94,7 @@ unittest
 /**
     If source encounters an error or completes, begin emitting notifications from next.
 */
-Observable!T continueWith(T)(Observable!T source, Observable!T next)
+Observable!T continueWith(T)(Observable!T source, Observable!T next) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -148,6 +148,7 @@ unittest
 {
     import reactived : single, sequenceEqual;
 
+    // dfmt off
     assert(create!int((Observer!int observer) {
             observer.onNext(1);
             observer.onNext(2);
@@ -159,14 +160,15 @@ unittest
         }).catchException!Exception((Exception) {
             return single(3);
         }).sequenceEqual([1, 2, 3]), "Excepted true.  Got false."); 
+        //dfmt on
 }
 
-Observable!T retry(T)(Observable!T source)
+Observable!T retry(T)(Observable!T source) pure @safe nothrow
 {
     return source.retry(-1);
 }
 
-Observable!T retry(T)(Observable!T source, size_t retryCount)
+Observable!T retry(T)(Observable!T source, size_t retryCount) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {

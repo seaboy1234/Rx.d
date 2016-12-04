@@ -37,7 +37,7 @@ private template publishSubject(TSubject)
     }
 }
 
-ConnectableObservable!T publish(T)(Observable!T observable)
+ConnectableObservable!T publish(T)(Observable!T observable) pure @safe nothrow
 {
     return publishSubject!(Subject!T)(observable);
 }
@@ -68,7 +68,7 @@ unittest
     currentThreadScheduler.work();
 }
 
-ConnectableObservable!T replay(T)(Observable!T source)
+ConnectableObservable!T replay(T)(Observable!T source) pure @safe nothrow
 {
     return publishSubject!(ReplaySubject!T)(source);
 }

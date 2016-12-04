@@ -10,7 +10,7 @@ import reactived.observer;
 /**
     Starts an observable sequence with the provided value, then emits values from the source observable.
 */
-Observable!T startWith(T)(Observable!T source, T value)
+Observable!T startWith(T)(Observable!T source, T value) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -54,7 +54,7 @@ unittest
     o.sequenceEqual([0, 1, 2, 3]).subscribe(v => assert(v));
 }
 
-Observable!T endWith(T)(Observable!T source, T value)
+Observable!T endWith(T)(Observable!T source, T value) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {

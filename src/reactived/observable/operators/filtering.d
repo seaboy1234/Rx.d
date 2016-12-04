@@ -10,7 +10,7 @@ import reactived.disposable : Disposable, createDisposable;
 import disposable = reactived.disposable;
 
 /// Create an Observable sequence using the first n values from the source.
-Observable!T take(T)(Observable!T source, int count) pure @safe
+Observable!T take(T)(Observable!T source, int count) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -61,7 +61,7 @@ unittest
 /// Create an Observable sequence which emits values while the condition is true.
 template takeWhile(alias predicate = "a")
 {
-    Observable!T takeWhile(T)(Observable!T source) pure @safe
+    Observable!T takeWhile(T)(Observable!T source) pure @safe nothrow
     {
         Disposable subscribe(Observer!T observer)
         {
@@ -114,7 +114,7 @@ unittest
 }
 
 /// Create an Observable sequence, skipping the first n elements.
-Observable!T skip(T)(Observable!T observable, int count)
+Observable!T skip(T)(Observable!T observable, int count) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -209,7 +209,7 @@ unittest
 }
 
 /// Create an Observable sequence which returns all but the last n elements of the source sequence.
-Observable!T skipLast(T)(Observable!T source, int count)
+Observable!T skipLast(T)(Observable!T source, int count) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -269,7 +269,7 @@ unittest
 }
 
 /// Create an Observable sequence which returns only the last n elements of the source sequence.
-Observable!T takeLast(T)(Observable!T source, int count)
+Observable!T takeLast(T)(Observable!T source, int count) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -311,7 +311,7 @@ unittest
 }
 
 /// Create an Observable sequence which emits only unique values from the source.
-Observable!T distinct(T)(Observable!T source)
+Observable!T distinct(T)(Observable!T source) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -336,7 +336,7 @@ Observable!T distinct(T)(Observable!T source)
 }
 
 /// Create an Observable sequence which emits elements different from the previous.
-Observable!T distinctUntilChanged(T)(Observable!T source)
+Observable!T distinctUntilChanged(T)(Observable!T source) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -511,7 +511,7 @@ unittest
 }
 
 /// Create an Observable sequence which ignores all elements but still retains the onCompleted and onError events.
-Observable!T ignoreElements(T)(Observable!T source)
+Observable!T ignoreElements(T)(Observable!T source) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {

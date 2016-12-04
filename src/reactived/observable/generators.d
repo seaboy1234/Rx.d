@@ -13,7 +13,7 @@ import reactived.scheduler;
 import disposable = reactived.disposable;
 
 /// Create an Observable sequence from a Subscribe method.
-Observable!T create(T)(Disposable delegate(Observer!T) subscribe) pure @safe
+Observable!T create(T)(Disposable delegate(Observer!T) subscribe) pure @safe nothrow
 {
     static class AnonymousObservable : Observable!T
     {
@@ -81,7 +81,7 @@ unittest
  + See_Also:
  + create(T)(Disposable delegate(Observer!T))
  +/
-Observable!T create(T)(void delegate() delegate(Observer!T) subscribe) pure @safe
+Observable!T create(T)(void delegate() delegate(Observer!T) subscribe) pure @safe nothrow
 {
     Disposable subscribe_(Observer!T observer)
     {
@@ -125,7 +125,7 @@ unittest
 /++
     Creates on Observable sequence which emits an error.
 +/
-Observable!T error(T)(Throwable error) pure @safe
+Observable!T error(T)(Throwable error) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -149,7 +149,7 @@ unittest
 }
 
 /// Creates an observable which emits no elements and never completes.
-Observable!T never(T)() pure @safe
+Observable!T never(T)() pure @safe nothrow
 {
     Disposable subscribe(Observer!T)
     {
@@ -160,7 +160,7 @@ Observable!T never(T)() pure @safe
 }
 
 /// Create an Observable sequence which emits only a single value.
-Observable!T single(T)(T value) pure @safe
+Observable!T single(T)(T value) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -191,7 +191,7 @@ unittest
 }
 
 /// Creates an Observable which emits no elements and completes immediately.
-Observable!T empty(T)() pure @safe
+Observable!T empty(T)() pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -217,7 +217,7 @@ unittest
 }
 
 /// Create an Observable sequence which emits a range of numerics.
-Observable!T range(T)(T start, T count) pure @safe if (isNumeric!T)
+Observable!T range(T)(T start, T count) pure @safe nothrow if (isNumeric!T)
 {
     return unfold!(T, T)(start, v => v - start < count, v => v + 1, v => v);
 }

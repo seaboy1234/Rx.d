@@ -12,7 +12,7 @@ import reactived.scheduler;
 import disposable = reactived.disposable;
 
 /// Returns the first element in the source Observable sequence.
-Observable!T first(T)(Observable!T source) pure @safe
+Observable!T first(T)(Observable!T source) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -182,7 +182,7 @@ unittest
 }
 
 Observable!(T[]) buffer(T)(Observable!T source, Duration window, size_t count = 0,
-        Scheduler scheduler = taskScheduler)
+        Scheduler scheduler = taskScheduler) pure @safe nothrow
 {
     Disposable subscribe(Observer!(T[]) observer)
     {

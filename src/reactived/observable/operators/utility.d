@@ -11,7 +11,7 @@ import disposable = reactived.disposable;
 /**
     Forwards calls on a subscriber to the given observer.
 */
-Observable!T doOnEach(T)(Observable!T observable, Observer!T observer)
+Observable!T doOnEach(T)(Observable!T observable, Observer!T observer) pure @safe nothrow
 {
     Disposable subscribe(Observer!T subscriber)
     {
@@ -43,7 +43,7 @@ Observable!T doOnEach(T)(Observable!T observable, Observer!T observer)
     Forwards calls on a subscriber to the given `onNext`, `onCompleted`, and `onError` handlers.
 */
 Observable!T doOnEach(T)(Observable!T observable, void delegate(T) onNext,
-        void delegate() onCompleted, void delegate(Throwable) onError)
+        void delegate() onCompleted, void delegate(Throwable) onError) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -88,7 +88,9 @@ unittest
     assert(completed);
     assert(!threw);
 
-    error!(int)(new Exception("Failed")).doOnError!int((Throwable) { threw = true; }).dump("error");
+    error!(int)(new Exception("Failed")).doOnError!int((Throwable) {
+        threw = true;
+    }).dump("error");
 
     assert(threw);
 }
@@ -96,7 +98,7 @@ unittest
 /**
     Forwards calls on a subscriber to the given `onNext` handler.
 */
-Observable!T doOnNext(T)(Observable!T observable, void delegate(T) onNext)
+Observable!T doOnNext(T)(Observable!T observable, void delegate(T) onNext) pure @safe nothrow
 {
     return doOnEach(observable, onNext, delegate() {  }, delegate(Throwable) {  });
 }
@@ -104,15 +106,16 @@ Observable!T doOnNext(T)(Observable!T observable, void delegate(T) onNext)
 /**
     Forwards calls on a subscriber to the given `onCompleted` handler.
 */
-Observable!T doOnCompleted(T)(Observable!T observable, void delegate() onCompleted)
+Observable!T doOnCompleted(T)(Observable!T observable, void delegate() onCompleted) pure @safe nothrow
 {
-    return doOnEach(observable, delegate(T) {  }, onCompleted, delegate(Throwable) {  });
+    return doOnEach(observable, delegate(T) {  }, onCompleted, delegate(Throwable) {
+    });
 }
 
 /**
     Forwards calls on a subscriber to the given `onError` handler.
 */
-Observable!T doOnError(T)(Observable!T observable, void delegate(Throwable) onError)
+Observable!T doOnError(T)(Observable!T observable, void delegate(Throwable) onError) pure @safe nothrow
 {
     return doOnEach!T(observable, delegate(T) {  }, delegate() {  }, onError);
 }
@@ -121,7 +124,7 @@ Observable!T doOnError(T)(Observable!T observable, void delegate(Throwable) onEr
     Forwards subscription events to the given `onSubscribe` and `onUnsubscribe` handlers.
 */
 Observable!T doOnSubscription(T)(Observable!T observable,
-        void delegate(Observer!T) onSubscribe, void delegate(Observer!T) onUnsubscribe)
+        void delegate(Observer!T) onSubscribe, void delegate(Observer!T) onUnsubscribe) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {

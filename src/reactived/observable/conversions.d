@@ -10,7 +10,7 @@ import reactived.observer;
 import reactived.scheduler;
 
 /// Create an Observable sequence using an InputRange.
-Observable!(ElementType!Range) asObservable(Range)(Range input) pure @safe 
+Observable!(ElementType!Range) asObservable(Range)(Range input) pure @safe nothrow 
         if (isInputRange!(Range))
 {
     Disposable subscribe(Observer!(ElementType!Range) observer)

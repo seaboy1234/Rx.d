@@ -7,7 +7,7 @@ import reactived.disposable;
 import disposable = reactived.disposable;
 
 /// Creates an Observable which emits true if the source Observable has any elements or false otherwise.
-Observable!bool any(T)(Observable!T source) pure @safe
+Observable!bool any(T)(Observable!T source) pure @safe nothrow
 {
     Disposable subscribe(Observer!bool observer)
     {
@@ -124,7 +124,7 @@ unittest
 }
 
 /// Creates an Observable which emits true if element is contained within the source Observable.
-Observable!bool contains(T)(Observable!T source, T element)
+Observable!bool contains(T)(Observable!T source, T element) pure @safe nothrow
 {
     Disposable subscribe(Observer!bool observer)
     {
@@ -159,7 +159,7 @@ unittest
 /**
     Given one or more source Observables, emit events from whichever emits an event first.
 */
-Observable!T amb(T)(Observable!T[] observables...)
+Observable!T amb(T)(Observable!T[] observables...) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -263,7 +263,7 @@ unittest
     Creates an Observable which is guaranteed to return at least one value.  
     If the source Observable is empty, returns the default value of T.
 +/
-Observable!T defaultIfEmpty(T)(Observable!T source)
+Observable!T defaultIfEmpty(T)(Observable!T source) pure @safe nothrow
 {
     return defaultIfEmpty(source, T.init);
 }
@@ -277,7 +277,7 @@ unittest
 }
 
 ///
-Observable!T defaultIfEmpty(T)(Observable!T source, T defaultValue)
+Observable!T defaultIfEmpty(T)(Observable!T source, T defaultValue) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -314,7 +314,7 @@ unittest
         .subscribe(value => assert(value, "value should be true."));
 }
 
-Observable!bool sequenceEqual(T)(Observable!T source, T[] sequence)
+Observable!bool sequenceEqual(T)(Observable!T source, T[] sequence) pure @safe nothrow
 {
     Disposable subscribe(Observer!bool observer)
     {
