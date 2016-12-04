@@ -185,3 +185,53 @@ unittest
 
     s.onError(new Exception("It failed."));
 }
+
+class LinkedQueue(T)
+{
+    private static struct Node
+    {
+        T data;
+        Node* next;
+    }
+
+    private Node* head, tail;
+
+    alias enqueue = push;
+    alias dequeue = pop;
+
+    bool empty()
+    {
+        return head is null;
+    }
+
+    void push(T item)
+    {
+        if (empty())
+        {
+            head = tail = new Node(item);
+        }
+        else
+        {
+            tail.next = new Node(item);
+            tail = tail.next;
+        }
+    }
+
+    T pop()
+    {
+        if (empty())
+        {
+            throw new Exception("Cannot pop an empty LinkedQueue.");
+        }
+
+        T item = head.data;
+        head = head.next;
+        
+        if (head is tail)
+        {
+            tail = null;
+        }
+        
+        return item;
+    }
+}
