@@ -2,7 +2,7 @@ module reactived.observable.operators.combination;
 
 import disposable = reactived.disposable;
 import reactived.disposable : createDisposable, Disposable, CompositeDisposable,
-    RefCountDisposable;
+    RefCountDisposable, AssignmentDisposable;
 import reactived.observable.generators : create;
 import reactived.observable.types;
 import reactived.observer;
@@ -105,4 +105,37 @@ unittest
     auto o = s.endWith(4);
 
     o.sequenceEqual([1, 2, 3, 4]).subscribe(v => assert(v));
+}
+
+Observable!T latest(T)(Observable!(Observable!T) source) pure @safe nothrow
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        AssignmentDisposable assignment = new AssignmentDisposable();
+        Disposable subscription;
+
+        void onCompleted()
+        {
+            subscription.dispose();
+            observer.onCompleted();
+        }
+
+        void onNext(Observable!T value)
+        {
+            assignment.disposable = value.subscribe(&observer.onNext, &onCompleted, &observer.onError);
+        }
+
+        subscription = source.subscribe(&onNext, &onCompleted, &observer.onError);
+
+        return new CompositeDisposable(subscription, assignment);
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    import reactived : range, map, sequenceEqual;
+
+    assert(range(0, 5).map!(x => range(0, x)).latest().sequenceEqual([0, 1, 2, 3, 4]));
 }
