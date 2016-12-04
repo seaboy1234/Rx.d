@@ -91,31 +91,9 @@ template flatMap(alias fun)
 {
     Observable!(typeof(unaryFun!fun(T.init)).ElementType) flatMap(T)(Observable!T source)
     {
-        alias ReturnType = typeof(unaryFun!fun(T.init));
-        alias ElementType = ReturnType.ElementType;
+        import reactived : merge;
 
-        Disposable subscribe(Observer!ElementType observer)
-        {
-            CompositeDisposable subscription = new CompositeDisposable();
-
-            void onCompleted()
-            {
-                subscription.dispose();
-                observer.onCompleted();
-            }
-
-            void onNext(T value)
-            {
-                ReturnType mapped = unaryFun!fun(value);
-                subscription.add(mapped.subscribe(&observer.onNext, &observer.onError));
-            }
-
-            subscription.add(source.subscribe(&onNext, &onCompleted, &observer.onError));
-
-            return subscription;
-        }
-
-        return create(&subscribe);
+        return source.map!fun().merge();
     }
 }
 
