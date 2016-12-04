@@ -104,9 +104,9 @@ unittest
         return cast(char)(value + 64);
     }
 
-    assert(range(0, 3).flatMap!(x => single(toLetter(x))).sequenceEqual(['A', 'B', 'C']));
+    range(1, 3).flatMap!(x => single(toLetter(x))).sequenceEqual(['A', 'B', 'C']).subscribe(x => assert(x));
 
-    assert(range(0, 3).flatMap!(x => range(0, x)).sequenceEqual([1, 1, 2, 1, 2, 3]));
+    range(1, 3).flatMap!(x => range(1, x)).sequenceEqual([1, 1, 2, 1, 2, 3]).subscribe(x => assert(x));
 }
 
 /// Applies an accumulator function to all values in the source Observable and emits the current result with each value.

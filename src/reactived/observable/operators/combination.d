@@ -116,7 +116,6 @@ Observable!T latest(T)(Observable!(Observable!T) source) pure @safe nothrow
 
         void onCompleted()
         {
-            subscription.dispose();
             observer.onCompleted();
         }
 
@@ -138,7 +137,7 @@ unittest
 {
     import reactived : range, map, sequenceEqual;
 
-    assert(range(0, 5).map!(x => range(0, x)).latest().sequenceEqual([0, 1, 2, 3, 4]));
+    range(0, 5).map!(x => range(0, x)).latest().sequenceEqual([0, 1, 2, 3, 4]).subscribe(x => assert(x));
 }
 
 Observable!T merge(T)(Observable!(Observable!T) source) pure @safe nothrow
@@ -163,5 +162,5 @@ Observable!T merge(T)(Observable!(Observable!T) source) pure @safe nothrow
 unittest
 {
     import reactived : range, map, sequenceEqual;
-    assert(range(0, 3).map!(x => range(0, x)).merge().sequenceEqual([1, 1, 2, 1, 2, 3]));
+    range(0, 3).map!(x => range(1, x)).merge().sequenceEqual([1, 1, 2, 1, 2, 3]).subscribe(v => assert(v));
 }

@@ -149,7 +149,7 @@ unittest
     import reactived : single, sequenceEqual;
 
     // dfmt off
-    assert(create!int((Observer!int observer) {
+    create!int((Observer!int observer) {
             observer.onNext(1);
             observer.onNext(2);
 
@@ -159,7 +159,7 @@ unittest
             };
         }).catchException!Exception((Exception) {
             return single(3);
-        }).sequenceEqual([1, 2, 3]), "Excepted true.  Got false."); 
+        }).sequenceEqual([1, 2, 3]).subscribe(x => assert(x, "Excepted true.  Got false.")); 
         //dfmt on
 }
 
