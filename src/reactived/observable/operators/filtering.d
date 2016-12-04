@@ -1,12 +1,17 @@
 module reactived.observable.operators.filtering;
 
+import std.datetime;
 import std.functional;
 import std.traits;
 import std.range.primitives;
 
+import core.thread;
+
 import reactived.observable;
 import reactived.observer;
-import reactived.disposable : Disposable, createDisposable;
+import reactived.scheduler;
+import reactived.disposable : assignmentDisposable, BooleanDisposable,
+    Disposable, createDisposable;
 import disposable = reactived.disposable;
 
 /// Create an Observable sequence using the first n values from the source.
@@ -546,4 +551,87 @@ unittest
 
         completed
     +/
+}
+
+Observable!T debounce(T)(Observable!T source, Duration duration, Scheduler scheduler = taskScheduler) pure @safe nothrow
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        auto window = assignmentDisposable!BooleanDisposable();
+        BooleanDisposable subscription = new BooleanDisposable();
+        size_t valuesWaiting;
+
+        void onNext(T value)
+        {
+            auto disposable = new BooleanDisposable();
+            window.disposable = disposable;
+
+            scheduler.run(() {
+                ++valuesWaiting;
+                Thread.sleep(duration);
+                
+                if (disposable.isDisposed || subscription.isDisposed)
+                {
+                    --valuesWaiting;
+                    return;
+                }
+
+                observer.onNext(value);
+                --valuesWaiting;
+            });
+        }
+
+        void onCompleted()
+        {
+            while(valuesWaiting > 0)
+            {
+                currentThreadScheduler.work();
+            }
+            window.dispose();
+            observer.onCompleted();
+        }
+
+        void onError(Throwable error)
+        {
+            window.dispose();
+            observer.onError(error);
+        }
+
+        return source.subscribe(&onNext, &onCompleted, &onError);
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    import reactived : Subject;
+    import std.stdio : writeln;
+
+    Subject!int subject = new Subject!int();
+
+    void sleep(int msecs)
+    {
+        Thread.sleep(dur!"msecs"(msecs));
+    }
+
+    // dfmt off
+    Disposable debounced = subject.debounce(dur!"msecs"(100))
+                                  .doOnNext((int x) { writeln("debounce => ", x); })
+                                  .sequenceEqual([1, 2, 3])
+                                  .observeOn(currentThreadScheduler)
+                                  .subscribe(x => assert(x));
+    // dfmt on
+    subject.onNext(5);
+    subject.onNext(1);
+    sleep(100);
+    subject.onNext(99);
+    sleep(50);
+    subject.onNext(2);
+    sleep(100);
+    subject.onNext(3);
+
+    subject.onCompleted();
+
+    currentThreadScheduler.work();
 }
