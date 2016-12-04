@@ -1,5 +1,7 @@
 module reactived.observable.operators.combination;
 
+import std.functional;
+
 import disposable = reactived.disposable;
 import reactived.disposable : createDisposable, Disposable, CompositeDisposable,
     RefCountDisposable, AssignmentDisposable;
@@ -137,7 +139,8 @@ unittest
 {
     import reactived : range, map, sequenceEqual;
 
-    range(0, 5).map!(x => range(0, x)).latest().sequenceEqual([0, 1, 2, 3, 4]).subscribe(x => assert(x));
+    range(0, 5).map!(x => range(0, x)).latest().sequenceEqual([0, 1, 2, 3, 4])
+        .subscribe(x => assert(x));
 }
 
 Observable!T merge(T)(Observable!(Observable!T) source) pure @safe nothrow
@@ -162,5 +165,104 @@ Observable!T merge(T)(Observable!(Observable!T) source) pure @safe nothrow
 unittest
 {
     import reactived : range, map, sequenceEqual;
-    range(0, 3).map!(x => range(1, x)).merge().sequenceEqual([1, 1, 2, 1, 2, 3]).subscribe(v => assert(v));
+
+    range(0, 3).map!(x => range(1, x)).merge().sequenceEqual([1, 1, 2, 1, 2,
+            3]).subscribe(v => assert(v));
+}
+
+template combineLatest(alias fun)
+{
+    Observable!(typeof(binaryFun!fun(L.init, R.init))) combineLatest(L, R)(
+            Observable!L source, Observable!R other)
+    {
+        alias select = binaryFun!fun;
+        alias ReturnType = typeof(select(L.init, R.init));
+
+        Disposable subscribe(Observer!ReturnType observer)
+        {
+            CompositeDisposable subscription = new CompositeDisposable();
+
+            bool startLeft, startRight;
+
+            L currentLeft;
+            R currentRight;
+
+            void onNext()
+            {
+                if (startLeft && startRight)
+                {
+                    observer.onNext(select(currentLeft, currentRight));
+                }
+            }
+
+            void onNextLeft(L left)
+            {
+                startLeft = true;
+                currentLeft = left;
+                onNext();
+            }
+
+            void onNextRight(R right)
+            {
+                startRight = true;
+                currentRight = right;
+                onNext();
+            }
+
+            void onCompleted()
+            {
+                subscription.dispose();
+
+                observer.onCompleted();
+            }
+
+            void onError(Throwable error)
+            {
+                subscription.dispose();
+                observer.onError(error);
+            }
+
+            subscription ~= source.subscribe(&onNextLeft, &onCompleted, &onError);
+            subscription ~= other.subscribe(&onNextRight, &onCompleted, &onError);
+
+            return subscription;
+        }
+
+        return create(&subscribe);
+    }
+}
+
+unittest
+{
+    import std.conv : to;
+    import reactived : Subject, sequenceEqual;
+
+    Subject!char left = new Subject!char();
+    Subject!int right = new Subject!int();
+
+    // dfmt off
+    Disposable combined = left.combineLatest!((x, y) => to!string(x) ~ to!string(y))(right)
+                              .sequenceEqual(["A1", "B1", "C1", "C2", "C3", "C4", "C5", "D5", "E5"])
+                              .subscribe(x => assert(x));
+    // dfmt on
+
+    left.onNext('A');
+    right.onNext(1);
+
+    left.onNext('B');
+    left.onNext('C');
+    right.onNext(2);
+    right.onNext(3);
+
+    right.onNext(4);
+    right.onNext(5);
+    left.onNext('D');
+    left.onNext('E');
+
+    left.onCompleted();
+
+    right.onNext(6);
+    right.onCompleted();
+
+    combined.dispose();
 }
