@@ -182,7 +182,7 @@ template combineLatest(alias fun)
         {
             CompositeDisposable subscription = new CompositeDisposable();
 
-            bool startLeft, startRight;
+            bool startLeft, startRight, endedLeft, endedRight;
 
             L currentLeft;
             R currentRight;
@@ -211,9 +211,22 @@ template combineLatest(alias fun)
 
             void onCompleted()
             {
-                subscription.dispose();
+                if (endedLeft && endedRight)
+                {
+                    observer.onCompleted();
+                }
+            }
 
-                observer.onCompleted();
+            void onCompletedLeft()
+            {
+                endedLeft = true;
+                onCompleted();
+            }
+
+            void onCompletedRight()
+            {
+                endedRight = true;
+                onCompleted();
             }
 
             void onError(Throwable error)
@@ -222,8 +235,8 @@ template combineLatest(alias fun)
                 observer.onError(error);
             }
 
-            subscription ~= source.subscribe(&onNextLeft, &onCompleted, &onError);
-            subscription ~= other.subscribe(&onNextRight, &onCompleted, &onError);
+            subscription ~= source.subscribe(&onNextLeft, &onCompletedLeft, &onError);
+            subscription ~= other.subscribe(&onNextRight, &onCompletedRight, &onError);
 
             return subscription;
         }
@@ -242,7 +255,7 @@ unittest
 
     // dfmt off
     Disposable combined = left.combineLatest!((x, y) => to!string(x) ~ to!string(y))(right)
-                              .sequenceEqual(["A1", "B1", "C1", "C2", "C3", "C4", "C5", "D5", "E5"])
+                              .sequenceEqual(["A1", "B1", "C1", "C2", "C3", "C4", "C5", "D5", "E5", "E6"])
                               .subscribe(x => assert(x));
     // dfmt on
 
