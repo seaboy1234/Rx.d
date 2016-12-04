@@ -3,11 +3,14 @@ module reactived.observable.conversions;
 import std.range.primitives;
 import std.parallelism;
 
-import reactived.disposable : BooleanDisposable, Disposable;
+import core.sync.rwmutex;
+
+import reactived.disposable : BooleanDisposable, Disposable, createDisposable;
 import reactived.observable.types;
 import reactived.observable.generators : create;
 import reactived.observer;
 import reactived.scheduler;
+import reactived.util : LinkedQueue;
 
 /// Create an Observable sequence using an InputRange.
 Observable!(ElementType!Range) asObservable(Range)(Range input) pure @safe nothrow 
@@ -142,51 +145,117 @@ unittest
     assert(val == 100, format("Expected 100.  Got %d.", val));
 }
 
-auto asRange(T)(Observable!T source)
+auto asRange(T)(Observable!T source) @trusted
 {
-    static struct RangeObserver
+    static class RangeObserver : Observer!T
     {
-        private Observable!T _source;
-
-        this(Observable!T source)
+    @trusted:
+        private
         {
-            _source = source;
+            bool _completed;
+            Throwable _error;
+            LinkedQueue!T _values;
+            Disposable _subscription;
+            ReadWriteMutex _mutex;
         }
 
-        int opApply(int delegate(ref T x) dg)
+        this()
         {
-            int completed = 0;
+            _values = new LinkedQueue!T();
+            _subscription = createDisposable({  });
+            _mutex = new ReadWriteMutex();
+        }
 
-            //dfmt off
-            BooleanDisposable subscription;
+        ~this()
+        {
+            _subscription.dispose();
+        }
 
-            subscription = new BooleanDisposable(_source.observeOn(currentThreadScheduler).subscribe(
-            (v) {
-                completed = dg(v);
-
-                if (completed)
-                {
-                    subscription.dispose();
-                }
-            }, { 
-                subscription.dispose(); 
-            }, (e) { 
-                subscription.dispose();
-                throw e; 
-            }));
-
-            //dfmt on
-
-            while (!subscription.isDisposed())
+        @property
+        {
+            T front()
             {
-                currentThreadScheduler.work();
+                bool isEmpty;
+                synchronized (_mutex.reader)
+                {
+                    isEmpty = _values.empty;
+                }
+
+                while (isEmpty)
+                {
+                    currentThreadScheduler.work();
+                    synchronized (_mutex.reader)
+                    {
+                        if(_error !is null)
+                        {
+                            throw _error;
+                        }
+                        isEmpty = _values.empty;
+                    }
+                }
+
+                synchronized (_mutex.writer)
+                {
+                    return _values.dequeue;
+                }
             }
 
-            return completed;
+            bool empty()
+            {
+                synchronized (_mutex.reader)
+                {
+                    return _completed && _values.empty;
+                }
+            }
+
+            Disposable subscription()
+            {
+                return _subscription;
+            }
+
+            void subscription(Disposable value)
+            {
+                _subscription.dispose();
+                _subscription = value;
+            }
+        }
+
+        void popFront()
+        {
+
+        }
+
+        void onNext(T value)
+        {
+            synchronized (_mutex.writer)
+            {
+                _values.enqueue(value);
+            }
+        }
+
+        void onCompleted()
+        {
+            synchronized (_mutex.writer)
+            {
+                _completed = true;
+            }
+        }
+
+        void onError(Throwable error)
+        {
+            synchronized (_mutex.writer)
+            {
+                _error = error;
+                _completed = true;
+            }
         }
     }
 
-    return RangeObserver(source);
+    RangeObserver value = new RangeObserver();
+    value.subscription = source.subscribe(value);
+    value.popFront();
+
+    return value;
 }
 
 unittest
