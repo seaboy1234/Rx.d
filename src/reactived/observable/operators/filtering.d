@@ -559,35 +559,31 @@ Observable!T debounce(T)(Observable!T source, Duration duration, Scheduler sched
     {
         auto window = assignmentDisposable!BooleanDisposable();
         BooleanDisposable subscription = new BooleanDisposable();
-        size_t valuesWaiting;
+        T current;
 
         void onNext(T value)
         {
             auto disposable = new BooleanDisposable();
             window.disposable = disposable;
 
+            current = value;
+
             scheduler.run(() {
-                ++valuesWaiting;
                 Thread.sleep(duration);
                 
                 if (disposable.isDisposed || subscription.isDisposed)
                 {
-                    --valuesWaiting;
                     return;
                 }
 
                 observer.onNext(value);
-                --valuesWaiting;
             });
         }
 
         void onCompleted()
         {
-            while(valuesWaiting > 0)
-            {
-                currentThreadScheduler.work();
-            }
             window.dispose();
+            onNext(current);
             observer.onCompleted();
         }
 
@@ -624,12 +620,13 @@ unittest
     // dfmt on
     subject.onNext(5);
     subject.onNext(1);
-    sleep(100);
+    sleep(105);
     subject.onNext(99);
     sleep(50);
     subject.onNext(2);
-    sleep(100);
+    sleep(105);
     subject.onNext(3);
+    sleep(105);
 
     subject.onCompleted();
 
