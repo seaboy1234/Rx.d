@@ -1,13 +1,13 @@
 module reactived.observable.operators.combination;
 
 import std.functional;
+import core.sync.mutex;
 
-import disposable = reactived.disposable;
-import reactived.disposable : createDisposable, Disposable, CompositeDisposable,
-    RefCountDisposable, AssignmentDisposable;
-import reactived.observable.generators : create;
-import reactived.observable.types;
+import reactived.observable;
 import reactived.observer;
+import reactived.disposable;
+import reactived.util : LinkedQueue;
+import disposable = reactived.disposable;
 
 /**
     Starts an observable sequence with the provided value, then emits values from the source observable.
@@ -265,4 +265,108 @@ unittest
     right.onCompleted();
 
     combined.dispose();
+}
+
+template zip(alias fun)
+{
+    Observable!(typeof(binaryFun!fun(L.init, R.init))) zip(L, R)(Observable!L source,
+            Observable!R other)
+    {
+        alias select = binaryFun!fun;
+        alias ReturnType = typeof(select(L.init, R.init));
+        Disposable subscribe(Observer!ReturnType observer)
+        {
+            CompositeDisposable subscription = new CompositeDisposable();
+            Mutex mutex = new Mutex();
+
+            LinkedQueue!L leftQueue = new LinkedQueue!L();
+            LinkedQueue!R rightQueue = new LinkedQueue!R();
+
+            void onNextLeft(L left)
+            {
+                synchronized (mutex)
+                {
+                    if (rightQueue.empty)
+                    {
+                        leftQueue.enqueue(left);
+                    }
+                    else
+                    {
+                        R right = rightQueue.dequeue;
+                        ReturnType result = select(left, right);
+                        observer.onNext(result);
+                    }
+                }
+            }
+
+            void onNextRight(R right)
+            {
+                synchronized (mutex)
+                {
+                    if (leftQueue.empty)
+                    {
+                        rightQueue.enqueue(right);
+                    }
+                    else
+                    {
+                        L left = leftQueue.dequeue;
+                        ReturnType result = select(left, right);
+                        observer.onNext(result);
+                    }
+                }
+            }
+
+            void onCompleted()
+            {
+                subscription.dispose();
+                observer.onCompleted();
+            }
+
+            void onError(Throwable error)
+            {
+                subscription.dispose();
+                observer.onError(error);
+            }
+
+            subscription ~= source.subscribe(&onNextLeft, &onCompleted, &onError);
+            subscription ~= other.subscribe(&onNextRight, &onCompleted, &onError);
+
+            return subscription;
+        }
+
+        return create(&subscribe);
+    }
+}
+
+unittest
+{
+    import std.conv : to;
+    import reactived : Subject, sequenceEqual;
+
+    Subject!char left = new Subject!char();
+    Subject!int right = new Subject!int();
+
+    // dfmt off
+    Disposable zipped = left.zip!((x, y) => to!string(x) ~ to!string(y))(right)
+                            .sequenceEqual(["A1", "B2", "C3", "D4", "E5"])
+                            .subscribe(x => assert(x));
+    // dfmt on
+
+    left.onNext('A');
+    right.onNext(1);
+
+    left.onNext('B');
+    left.onNext('C');
+    right.onNext(2);
+    right.onNext(3);
+
+    right.onNext(4);
+    right.onNext(5);
+    left.onNext('D');
+    left.onNext('E');
+
+    left.onCompleted();
+    right.onCompleted();
+
+    zipped.dispose();
 }
