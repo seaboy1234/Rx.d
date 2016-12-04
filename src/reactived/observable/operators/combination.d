@@ -113,7 +113,7 @@ Observable!T latest(T)(Observable!(Observable!T) source) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
-        AssignmentDisposable assignment = new AssignmentDisposable();
+        auto assignment = assignmentDisposable();
         Disposable subscription;
 
         void onCompleted()
@@ -123,7 +123,7 @@ Observable!T latest(T)(Observable!(Observable!T) source) pure @safe nothrow
 
         void onNext(Observable!T value)
         {
-            assignment.disposable = value.subscribe(&observer.onNext,
+            assignment = value.subscribe(&observer.onNext,
                     &onCompleted, &observer.onError);
         }
 

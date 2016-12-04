@@ -233,38 +233,71 @@ class ObjectDisposedException : Exception
     }
 }
 
-class AssignmentDisposable : Disposable
+AssignmentDisposable!Disposable assignmentDisposable(Disposable value = empty)
+{
+    return new AssignmentDisposable!Disposable(value);
+}
+
+AssignmentDisposable!T assignmentDisposable(T : Disposable)(T value)
+{
+    return new AssignmentDisposable!T(value);
+}
+
+AssignmentDisposable!T assignmentDisposable(T : Disposable)()
+        if (is(typeof(new T()) : T))
+{
+    return new AssignmentDisposable!T();
+}
+
+class AssignmentDisposable(TDisposable : Disposable) : Disposable
 {
     private
     {
         bool _disposed;
-        Disposable _dispose;
+        TDisposable _dispose;
     }
 
-    this()
+    alias disposable this;
+
+    static if (is(typeof(new TDisposable()) : Disposable))
     {
-        this(empty());
+        package this()
+        {
+            this(new TDisposable());
+        }
     }
 
-    this(Disposable value)
+    static if (is(TDisposable == Disposable))
+    {
+        package this()
+        {
+            this(empty());
+        }
+    }
+
+    package this(TDisposable value)
     {
         _dispose = value;
     }
 
-    Disposable disposable() @property
+    TDisposable disposable() @property
+    {
+        return _dispose;
+    }
+
+    void disposable(TDisposable value) @property
     {
         if (_disposed)
         {
             throw new ObjectDisposedException();
         }
-
-        return _dispose;
-    }
-
-    void disposable(Disposable value) @property
-    {
         _dispose.dispose();
         _dispose = value;
+    }
+
+    void opAssign(TDisposable value)
+    {
+        disposable = value;
     }
 
     void dispose()
@@ -277,6 +310,41 @@ class AssignmentDisposable : Disposable
         _disposed = true;
         _dispose.dispose();
     }
+}
+
+unittest
+{
+    auto assignment = assignmentDisposable();
+
+    bool disposed1, disposed2;
+
+    assignment = createDisposable({ disposed1 = true; });
+    assignment = new BooleanDisposable({ disposed2 = true; });
+
+    assert(disposed1);
+
+    assignment.dispose();
+
+    assert(disposed2);
+}
+
+unittest
+{
+    auto assignment = assignmentDisposable!BooleanDisposable();
+
+    assert(!assignment.isDisposed);
+
+    auto disposable = assignment.disposable;
+
+    assert(!disposable.isDisposed);
+
+    assignment = new BooleanDisposable();
+
+    assert(disposable.isDisposed);
+
+    assignment.dispose();
+
+    assert(assignment.isDisposed);
 }
 
 /// Creates a Disposable which has the provided onDisposed delegate as its dispose method.

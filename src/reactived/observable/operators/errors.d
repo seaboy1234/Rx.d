@@ -1,6 +1,6 @@
 module reactived.observable.operators.errors;
 
-import reactived.disposable : AssignmentDisposable, CompositeDisposable,
+import reactived.disposable : assignmentDisposable, CompositeDisposable,
     Disposable;
 import reactived.observable.types;
 import reactived.observable.generators : create;
@@ -172,14 +172,14 @@ Observable!T retry(T)(Observable!T source, size_t retryCount) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
-        AssignmentDisposable subscription = new AssignmentDisposable();
+        auto subscription = assignmentDisposable();
         void onError(Throwable e)
         {
             import std.stdio : writeln;
             writeln("threw");
             if (--retryCount != 0)
             {
-                subscription.disposable = source.subscribe(&observer.onNext,
+                subscription = source.subscribe(&observer.onNext,
                         &observer.onCompleted, &onError);
             }
             else
