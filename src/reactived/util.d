@@ -188,6 +188,7 @@ unittest
 
 class LinkedQueue(T)
 {
+@safe:
     private static struct Node
     {
         T data;
@@ -199,12 +200,12 @@ class LinkedQueue(T)
     alias enqueue = push;
     alias dequeue = pop;
 
-    bool empty()
+    bool empty() @property nothrow
     {
         return head is null;
     }
 
-    void push(T item)
+    void push(T item) nothrow
     {
         if (empty())
         {
@@ -219,19 +220,19 @@ class LinkedQueue(T)
 
     T pop()
     {
-        if (empty())
+        if (empty)
         {
             throw new Exception("Cannot pop an empty LinkedQueue.");
         }
 
         T item = head.data;
         head = head.next;
-        
+
         if (head is tail)
         {
             tail = null;
         }
-        
+
         return item;
     }
 }
