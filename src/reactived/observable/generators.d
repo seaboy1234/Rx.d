@@ -217,7 +217,8 @@ unittest
 }
 
 /// Create an Observable sequence which emits a range of numerics.
-Observable!T range(T)(T start, T count, T step = 1) pure @safe nothrow if (isNumeric!T)
+Observable!T range(T)(T start, T count, T step = 1) pure @safe nothrow 
+        if (isNumeric!T)
 {
     return unfold!(T, T)(start, v => v - start < count * step, v => v + step, v => v);
 }
@@ -379,7 +380,7 @@ Observable!T unfold(T, Result)(T seed, bool delegate(T) condition,
         bool disposed;
         T current = seed;
 
-        do
+        while (!disposed && condition(current))
         {
             try
             {
@@ -391,7 +392,6 @@ Observable!T unfold(T, Result)(T seed, bool delegate(T) condition,
             }
             current = iterate(current);
         }
-        while (!disposed && condition(current));
 
         observer.onCompleted();
 
@@ -407,6 +407,8 @@ unittest
 
     unfold!(int, int)(1, v => v < 25, v => v + 1, v => v).dump("unfold(1)");
     unfold!(int, int)(1, v => v < 100, v => v + 1, v => v).take(10).dump("unfold(1).take(10)");
+
+    unfold!(int, int)(1, v => v < 1, v => v + 1, v => v).sequenceEqual([]).subscribe(v => assert(v));
 }
 
 Observable!size_t interval(Duration duration)
