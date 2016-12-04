@@ -105,6 +105,32 @@ class CompositeDisposable : Disposable
         _disposables = disposables.dup;
     }
 
+    T opBinary(string op, T)(T rhs)
+    {
+        return mixin("_disposables " ~ op ~ " rhs");
+    }
+
+    int opDollar(size_t pos)()
+    {
+        return _disposables.opDollar(pos);
+    }
+
+    Disposable[] opOpAssign(string op)(Disposable value)
+    {
+        return mixin("_disposables" ~ op ~ "value");
+    }
+
+    Disposable opIndex(size_t index)
+    {
+        return _disposables[index];
+    }
+
+    void opIndexAssign(size_t index, Disposable value)
+    {
+        _disposables[index].dispose();
+        _disposables[index] = value;
+    }
+
     void add(Disposable disposable)
     {
         _disposables ~= disposable;
@@ -194,7 +220,8 @@ class ObjectDisposedException : Exception
      * code. This constructor does not automatically throw the newly-created
      * Exception; the $(D throw) statement should be used for that purpose.
      */
-    @nogc @safe pure nothrow this(string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+    @nogc @safe pure nothrow this(string file = __FILE__, size_t line = __LINE__,
+            Throwable next = null)
     {
         super("Cannot access a disposed object", file, line, next);
     }
@@ -226,7 +253,7 @@ class AssignmentDisposable : Disposable
 
     Disposable disposable() @property
     {
-        if(_disposed)
+        if (_disposed)
         {
             throw new ObjectDisposedException();
         }
