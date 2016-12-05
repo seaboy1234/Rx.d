@@ -186,6 +186,21 @@ unittest
     s.onError(new Exception("It failed."));
 }
 
+Observable!T transparentDump(T)(Observable!T source, string name)
+{
+    import reactived : doOnEach;
+    import std.stdio : writeln;
+
+    // dfmt off
+    return source.doOnEach(
+        (T val) => writeln(name, " => ", val),
+        ()      => writeln(name, " => completed"), 
+        e       => writeln(name, " => Error: ", e)
+    );
+
+     // dfmt on
+}
+
 class LinkedQueue(T)
 {
 @safe:
