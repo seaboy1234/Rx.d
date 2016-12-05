@@ -279,3 +279,122 @@ unittest
 struct Unit
 {
 }
+
+interface Notification(T)
+{
+@safe pure @property:
+    inout
+    {
+        NotificationKind kind();
+
+        T value();
+        bool hasValue();
+    }
+    Throwable error();
+}
+
+package class OnNextNotification(T) : Notification!T
+{
+    private @safe
+    {
+        T _value;
+    }
+
+    this(T value) @safe inout pure @nogc
+    {
+        _value = value;
+    }
+
+@safe pure @nogc @property:
+    inout
+    {
+        NotificationKind kind()
+        {
+            return NotificationKind.onNext;
+        }
+
+        T value()
+        {
+            return _value;
+        }
+
+        bool hasValue()
+        {
+            return true;
+        }
+    }
+    Throwable error()
+    {
+        return null;
+    }
+}
+
+package class OnErrorNotification(T) : Notification!T
+{
+    private @safe
+    {
+        Throwable _error;
+    }
+
+    this(Throwable error) @safe pure @nogc
+    {
+        _error = error;
+    }
+
+@safe pure @nogc @property:
+    inout
+    {
+        NotificationKind kind()
+        {
+            return NotificationKind.onError;
+        }
+
+        T value()
+        {
+            return T.init;
+        }
+
+        bool hasValue()
+        {
+            return false;
+        }
+    }
+    Throwable error()
+    {
+        return _error;
+    }
+}
+
+package class OnCompletedNotification(T) : Notification!T
+{
+@safe pure @nogc @property:
+    inout
+    {
+        NotificationKind kind()
+        {
+            return NotificationKind.onCompleted;
+        }
+
+        T value()
+        {
+            return T.init;
+        }
+
+        bool hasValue()
+        {
+            return false;
+        }
+    }
+
+    Throwable error()
+    {
+        return null;
+    }
+}
+
+enum NotificationKind
+{
+    onNext,
+    onCompleted,
+    onError
+}

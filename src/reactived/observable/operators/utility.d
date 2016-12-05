@@ -184,3 +184,69 @@ Observable!T doOnUnsubscribe(T)(Observable!T observable, void delegate(Observer!
 {
     return doOnSubscription(observable, (Observer!T) {  }, onUnsubscribe);
 }
+
+Observable!(Notification!T) materialize(T)(Observable!T source) @safe pure nothrow
+{
+    Disposable subscribe(Observer!(Notification!T) observer)
+    {
+        void onNext(T value)
+        {
+            observer.onNext(new OnNextNotification!T(value));
+        }
+
+        void onCompleted()
+        {
+            observer.onNext(new OnCompletedNotification!T());
+            observer.onCompleted();
+        }
+
+        void onError(Throwable error)
+        {
+            observer.onNext(new OnErrorNotification!T(error));
+            observer.onError(error);
+        }
+
+        return source.subscribe(&onNext, &onCompleted, &onError);
+    }
+
+    return create(&subscribe);
+}
+
+Observable!T dematerialize(T)(Observable!(Notification!T) source)
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        void onNext(Notification!T value)
+        {
+            switch (value.kind) with (NotificationKind)
+            {
+            case onNext:
+                observer.onNext(value.value);
+                break;
+            case onCompleted:
+                observer.onCompleted();
+                break;
+            case onError:
+                observer.onError(value.error);
+                break;
+            default:
+                assert(0);
+            }
+        }
+
+        return source.subscribe(&onNext, {  }, (Throwable) {  });
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    // dfmt off
+    range(0, 10).materialize()
+                .dematerialize()
+                .sequenceEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+                .subscribe(x => assert(x));
+
+    // dfmt on
+}
