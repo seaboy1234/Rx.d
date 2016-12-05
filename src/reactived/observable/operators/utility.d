@@ -10,6 +10,7 @@ import core.thread;
 import reactived.observable;
 import reactived.observer;
 import reactived.disposable;
+import reactived.scheduler;
 import disposable = reactived.disposable;
 
 /**
@@ -330,5 +331,67 @@ unittest
                 .timeInterval()
                 .transparentDump("timeInterval")
                 .subscribe(x => assert(x.duration.total!"msecs"() >= 100));
+    // dfmt on
+}
+
+Observable!T timeout(T)(Observable!T source, Duration duration, Scheduler scheduler = taskScheduler) pure @safe nothrow
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        auto window = assignmentDisposable!BooleanDisposable();
+
+        void onCompleted()
+        {
+            window.dispose();
+            observer.onCompleted();
+        }
+
+        void onError(Throwable error)
+        {
+            window.dispose();
+            observer.onError(error);
+        }
+
+        void runTimeout()
+        {
+            auto disposable = new BooleanDisposable();
+            window.disposable = disposable;
+
+            scheduler.run(() {
+                Thread.sleep(duration);
+
+                if (!disposable.isDisposed)
+                {
+                    onError(new Exception("Timed out!"));
+                }
+            });
+        }
+
+        void onNext(T value)
+        {
+            observer.onNext(value);
+
+            runTimeout();
+        }
+
+        runTimeout();
+
+        return source.subscribe(&onNext, &onCompleted, &onError);
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    import std.exception : assertThrown, assertNotThrown;
+
+    // dfmt off
+    assertThrown(single!int(1).delay(dur!"msecs"(101))
+                              .timeout(dur!"msecs"(100), defaultScheduler)
+                              .subscribe(x => assert(x)));
+
+    assertNotThrown(single!int(1).timeout(dur!"msecs"(100))
+                                 .subscribe(x => assert(x)));
     // dfmt on
 }
