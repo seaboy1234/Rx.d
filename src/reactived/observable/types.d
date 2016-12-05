@@ -1,5 +1,7 @@
 module reactived.observable.types;
 
+import std.datetime;
+
 import reactived.observer;
 import reactived.disposable : Disposable, createDisposable;
 import std.range;
@@ -397,4 +399,10 @@ enum NotificationKind
     onNext,
     onCompleted,
     onError
+}
+
+struct Timestamp(T)
+{
+    SysTime timestamp;
+    T value;
 }

@@ -250,3 +250,8 @@ unittest
 
     // dfmt on
 }
+
+Observable!(Timestamp!T) timestamp(T)(Observable!T source)
+{
+    return source.map!(x => Timestamp!T(Clock.now, x));
+}
