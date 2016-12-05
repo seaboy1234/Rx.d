@@ -285,13 +285,10 @@ struct Unit
 interface Notification(T)
 {
 @safe pure @property:
-    inout
-    {
-        NotificationKind kind();
+    NotificationKind kind();
 
-        T value();
-        bool hasValue();
-    }
+    T value();
+    bool hasValue();
     Throwable error();
 }
 
@@ -302,29 +299,27 @@ package class OnNextNotification(T) : Notification!T
         T _value;
     }
 
-    this(T value) @safe inout pure @nogc
+    this(T value) @safe pure @nogc
     {
         _value = value;
     }
 
 @safe pure @nogc @property:
-    inout
+    NotificationKind kind()
     {
-        NotificationKind kind()
-        {
-            return NotificationKind.onNext;
-        }
-
-        T value()
-        {
-            return _value;
-        }
-
-        bool hasValue()
-        {
-            return true;
-        }
+        return NotificationKind.onNext;
     }
+
+    T value()
+    {
+        return _value;
+    }
+
+    bool hasValue()
+    {
+        return true;
+    }
+
     Throwable error()
     {
         return null;
@@ -344,23 +339,21 @@ package class OnErrorNotification(T) : Notification!T
     }
 
 @safe pure @nogc @property:
-    inout
+    NotificationKind kind()
     {
-        NotificationKind kind()
-        {
-            return NotificationKind.onError;
-        }
-
-        T value()
-        {
-            return T.init;
-        }
-
-        bool hasValue()
-        {
-            return false;
-        }
+        return NotificationKind.onError;
     }
+
+    T value()
+    {
+        return T.init;
+    }
+
+    bool hasValue()
+    {
+        return false;
+    }
+
     Throwable error()
     {
         return _error;
@@ -370,22 +363,19 @@ package class OnErrorNotification(T) : Notification!T
 package class OnCompletedNotification(T) : Notification!T
 {
 @safe pure @nogc @property:
-    inout
+    NotificationKind kind()
     {
-        NotificationKind kind()
-        {
-            return NotificationKind.onCompleted;
-        }
+        return NotificationKind.onCompleted;
+    }
 
-        T value()
-        {
-            return T.init;
-        }
+    T value()
+    {
+        return T.init;
+    }
 
-        bool hasValue()
-        {
-            return false;
-        }
+    bool hasValue()
+    {
+        return false;
     }
 
     Throwable error()
