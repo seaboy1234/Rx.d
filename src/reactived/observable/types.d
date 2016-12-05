@@ -78,9 +78,9 @@ interface Observable(T)
 
         }
 
-        void onError(Throwable)
+        void onError(Throwable e)
         {
-
+            throw e;
         }
 
         return subscribe(onNext, &onCompleted, &onError);
@@ -89,9 +89,9 @@ interface Observable(T)
     /// Subscribe to an Observable using onNext and onCompleted methods, leaving onError empty.
     final Disposable subscribe(void delegate(T) onNext, void delegate() onCompleted)
     {
-        void onError(Throwable)
+        void onError(Throwable e)
         {
-
+            throw e;
         }
 
         return subscribe(onNext, onCompleted, &onError);
