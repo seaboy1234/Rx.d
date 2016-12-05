@@ -4,6 +4,8 @@ import std.datetime;
 import std.functional;
 import std.traits;
 
+import core.thread;
+
 import reactived.observable;
 import reactived.observer;
 import reactived.disposable;
@@ -255,4 +257,33 @@ unittest
 Observable!(Timestamp!T) timestamp(T)(Observable!T source)
 {
     return source.map!(x => Timestamp!T(Clock.currTime(), x));
+}
+
+Observable!T delay(T)(Observable!T source, Duration delay)
+{
+    // dfmt off
+    return source.materialize()
+                 .doOnNext((Notification!T) { Thread.sleep(delay); })
+                 .dematerialize();
+    // dfmt on
+}
+
+unittest
+{
+    import reactived.util : transparentDump;
+    
+    struct Diff
+    {
+        SysTime first, second;
+        int value;
+    }
+
+    // dfmt off
+    range(0, 10).timestamp()
+                .delay(dur!"msecs"(100))
+                .transparentDump("delay")
+                .timestamp()
+                .map!(x => Diff(x.value.timestamp, x.timestamp, x.value.value))
+                .subscribe(x => assert((x.first - x.second).total!"msecs"() <= 150));
+    // dfmt on
 }
