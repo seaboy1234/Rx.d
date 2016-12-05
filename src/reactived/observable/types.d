@@ -396,3 +396,9 @@ struct Timestamp(T)
     SysTime timestamp;
     T value;
 }
+
+struct TimeInterval(T)
+{
+    Duration duration;
+    T value;
+}

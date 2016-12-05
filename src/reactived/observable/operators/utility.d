@@ -1,5 +1,6 @@
 module reactived.observable.operators.utility;
 
+import std.conv;
 import std.datetime;
 import std.functional;
 import std.traits;
@@ -271,7 +272,7 @@ Observable!T delay(T)(Observable!T source, Duration delay)
 unittest
 {
     import reactived.util : transparentDump;
-    
+
     struct Diff
     {
         SysTime first, second;
@@ -285,5 +286,49 @@ unittest
                 .timestamp()
                 .map!(x => Diff(x.value.timestamp, x.timestamp, x.value.value))
                 .subscribe(x => assert((x.first - x.second).total!"msecs"() <= 150));
+    // dfmt on
+}
+
+Observable!(TimeInterval!T) timeInterval(T)(Observable!T source)
+{
+    Disposable subscribe(Observer!(TimeInterval!T) observer)
+    {
+        StopWatch sw = StopWatch();
+        sw.start();
+        void onNext(T value)
+        {
+            sw.stop();
+            observer.onNext(TimeInterval!T(sw.peek().to!Duration(), value));
+            sw.reset();
+            sw.start();
+        }
+
+        void onCompleted()
+        {
+            sw.stop();
+            observer.onCompleted();
+        }
+
+        void onError(Throwable error)
+        {
+            sw.stop();
+            observer.onError(error);
+        }
+
+        return source.subscribe(&onNext, &onCompleted, &onError);
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    import reactived.util : transparentDump;
+
+    // dfmt off
+    range(0, 10).delay(dur!"msecs"(100))
+                .timeInterval()
+                .transparentDump("timeInterval")
+                .subscribe(x => assert(x.duration.total!"msecs"() >= 100));
     // dfmt on
 }
