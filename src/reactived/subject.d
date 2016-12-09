@@ -41,7 +41,7 @@ class Subject(T) : Observable!T, Observer!T
     /// Causes the sequence to complete. 
     void onCompleted()
     {
-        if(_completed)
+        if (_completed)
         {
             return;
         }
@@ -63,9 +63,9 @@ class Subject(T) : Observable!T, Observer!T
     /// Causes the sequence to complete with the specified error.
     void onError(Throwable error)
     {
-        if(_completed)
+        if (_completed)
         {
-
+            return;
         }
         _completed = true;
 
@@ -82,7 +82,7 @@ class Subject(T) : Observable!T, Observer!T
     {
         import std.algorithm : countUntil, remove;
 
-        if(_completed)
+        if (_completed)
         {
             observer.onCompleted();
             return empty();
@@ -90,10 +90,13 @@ class Subject(T) : Observable!T, Observer!T
 
         _observers ~= observer;
 
-        return createDisposable(() {
+        return createDisposable({
             size_t index = _observers.countUntil(observer);
             assert(index != -1);
+
             _observers.remove(index);
+
+            assert(_observers.countUntil(observer) == -1);
         });
     }
 }
@@ -107,6 +110,7 @@ unittest
     {
         void onNext(int value)
         {
+            assert(value < 3);
             writeln(value);
         }
 
