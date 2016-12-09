@@ -94,7 +94,7 @@ class Subject(T) : Observable!T, Observer!T
             size_t index = _observers.countUntil(observer);
             assert(index != -1);
 
-            _observers.remove(index);
+            _observers = _observers.remove(index);
 
             assert(_observers.countUntil(observer) == -1);
         });
