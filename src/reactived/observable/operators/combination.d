@@ -123,8 +123,7 @@ Observable!T latest(T)(Observable!(Observable!T) source) pure @safe nothrow
 
         void onNext(Observable!T value)
         {
-            assignment = value.subscribe(&observer.onNext,
-                    &onCompleted, &observer.onError);
+            assignment = value.subscribe(&observer.onNext, &onCompleted, &observer.onError);
         }
 
         subscription = source.subscribe(&onNext, &onCompleted, &observer.onError);
@@ -382,4 +381,71 @@ unittest
     right.onCompleted();
 
     zipped.dispose();
+}
+
+Observable!T switchLatest(T)(Observable!(Observable!T) source)
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        CompositeDisposable subscription = new CompositeDisposable();
+
+        auto current = assignmentDisposable();
+
+        void onCompleted()
+        {
+            subscription.dispose();
+            observer.onCompleted();
+        }
+
+        void onError(Throwable error)
+        {
+            current.dispose();
+            observer.onError(error);
+        }
+
+        void onNext(Observable!T next)
+        {
+            current = next.subscribe(&observer.onNext, &onCompleted, &onError);
+        }
+
+        subscription ~= current;
+        subscription ~= source.subscribe(&onNext, &onError);
+
+        return subscription;
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    import reactived : Subject;
+    import reactived.util : transparentDump;
+
+    Subject!(Observable!int) subject = new Subject!(Observable!int);
+
+    Subject!(int)[3] subjects = [new Subject!int(), new Subject!int(), new Subject!int()];
+
+    // dfmt off
+    auto sub = subject.switchLatest()
+                      .transparentDump("switchLatest")
+                      .sequenceEqual([1, 2, 3, 4, 5])
+                      .subscribe(x => assert(x));
+    // dfmt on
+
+    subject.onNext(subjects[0]);
+    subjects[0].onNext(1);
+    subjects[0].onNext(2);
+    subject.onNext(subjects[1]);
+    subjects[1].onNext(3);
+    subjects[0].onNext(1);
+    subject.onNext(subjects[0]);
+    subjects[0].onNext(4);
+    subjects[1].onNext(4);
+    subject.onNext(subjects[2]);
+    subjects[2].onNext(5);
+
+    subjects[2].onCompleted();
+
+    subject.onCompleted();
 }
