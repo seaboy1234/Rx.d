@@ -155,7 +155,7 @@ unittest
 }
 
 /// Converts 
-Observable!E asObservable(T, E)(T observable) if (isObservable!(T, E))
+Observable!E asObservable(T, E)(T observable) if (isObservableOfElement!(T, E))
 {
     import reactived.observable.generators : create;
 
@@ -167,14 +167,24 @@ Observable!E asObservable(T, E)(T observable) if (isObservable!(T, E))
     return create(&subscribe);
 }
 
-template isObservable(T, E)
+template isObservableOfElement(T, E)
 {
-    enum bool isObservable = __traits(compiles, {
+    enum bool isObservableOfElement = is(typeof({
             T observable = T.init;
             Observer!E observer = void;
 
             Disposable x = observable.subscribe(observer);
-        });
+    }));
+}
+
+template isObservable(T)
+{
+    enum bool isObservable = is(typeof({
+        T observable = T.init;
+        alias E = ElementType!T;
+
+        return isObservableOfElement!(T, E);
+    }));
 }
 
 unittest
@@ -198,13 +208,13 @@ unittest
         }
     }
 
-    assert(isObservable!(Observable!(int), int));
-    assert(!isObservable!(B, int), "B is not observable");
-    assert(isObservable!(A, int), "A is observable");
+    assert(isObservableOfElement!(Observable!(int), int));
+    assert(!isObservableOfElement!(B, int), "B is not observable");
+    assert(isObservableOfElement!(A, int), "A is observable");
 }
 
 Observable!(E) synchronize(O, E = O.ElementType)(O observable)
-        if (isObservable!(O, E))
+        if (isObservableOfElement!(O, E))
 {
     import reactived : create;
 
