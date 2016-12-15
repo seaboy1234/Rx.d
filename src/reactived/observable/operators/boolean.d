@@ -1,6 +1,7 @@
 module reactived.observable.operators.boolean;
 
 import std.functional;
+import std.range.primitives;
 import reactived.observable;
 import reactived.observer;
 import reactived.disposable;
@@ -314,18 +315,20 @@ unittest
         .subscribe(value => assert(value, "value should be true."));
 }
 
-Observable!bool sequenceEqual(T)(Observable!T source, T[] sequence) pure @safe nothrow
+Observable!bool sequenceEqual(T, Range)(Observable!T source, Range sequence) pure @safe nothrow 
+        if (isInputRange!Range && is(T : ElementType!Range))
 {
     Disposable subscribe(Observer!bool observer)
     {
-        int index;
         void onNext(T value)
         {
-            if (index >= sequence.length || value != sequence[index++])
+            if (sequence.empty || sequence.front != value)
             {
                 observer.onNext(false);
                 observer.onCompleted();
             }
+
+            sequence.popFront();
         }
 
         void onCompleted()
