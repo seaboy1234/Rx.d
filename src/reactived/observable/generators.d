@@ -403,12 +403,22 @@ Observable!T unfold(T, Result)(T seed, bool delegate(T) condition,
 
 unittest
 {
-    import reactived.util : dump;
+    import reactived.util : transparentDump;
+    import reactived : asRange;
+    import std.range : iota;
 
-    unfold!(int, int)(1, v => v < 25, v => v + 1, v => v).dump("unfold(1)");
-    unfold!(int, int)(1, v => v < 100, v => v + 1, v => v).take(10).dump("unfold(1).take(10)");
+    // dfmt off
+    unfold!(int, int)(1, v => v < 25, v => v + 1, v => v).transparentDump("unfold(1)")
+                                                         .sequenceEqual(iota(1, 25))
+                                                         .subscribe(x => assert(x));
 
-    unfold!(int, int)(1, v => v < 1, v => v + 1, v => v).sequenceEqual([]).subscribe(v => assert(v));
+    unfold!(int, int)(1, v => v < 100, v => v + 1, v => v).take(10)
+                                                          .transparentDump("unfold(1).take(10)")
+                                                          .sequenceEqual(iota(1, 11))
+                                                          .subscribe(x => assert(x));
+    // dfmt on
+
+    unfold!(int, int)(1, v => v < 1, v => v + 1, v => v).sequenceEqual(empty!int().asRange).subscribe(v => assert(v));
 }
 
 Observable!size_t interval(Duration duration)
