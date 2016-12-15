@@ -395,3 +395,48 @@ unittest
                                  .subscribe(x => assert(x)));
     // dfmt on
 }
+
+Observable!T using(T)(Disposable delegate() getResource,
+        Observable!T delegate(Disposable) getObservable)
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        Disposable resource = getResource();
+        Observable!T x = getObservable(resource);
+
+        void onCompleted()
+        {
+            resource.dispose();
+            observer.onCompleted();
+        }
+
+        void onError(Throwable error)
+        {
+            resource.dispose();
+            observer.onError(error);
+        }
+
+        Disposable subscription = x.subscribe(&observer.onNext, &onCompleted, &onError);
+        return new CompositeDisposable(resource, subscription);
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    import reactived : Subject, sequenceEqual;
+
+    bool disposed;
+
+    void dispose()
+    {
+        disposed = true;
+    }
+
+    // dfmt off
+    using(() => createDisposable(&dispose), (Disposable) => range(0, 3))
+        .sequenceEqual([0, 1, 2]).subscribe(x => assert(x));
+    // dfmt on
+    assert(disposed);
+}
