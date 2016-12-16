@@ -1,5 +1,7 @@
 module reactived.util;
 
+import std.range;
+
 import core.thread;
 
 /++
@@ -199,6 +201,11 @@ Observable!T transparentDump(T)(Observable!T source, string name)
     );
 
      // dfmt on
+}
+
+void assertEqual(T, Range)(Observable!T source, Range range, string message) if (isInputRange!Range && is(ElementType!Range == T))
+{
+    assert(source.sequenceEqual(range).wait(), message);
 }
 
 class LinkedQueue(T)
