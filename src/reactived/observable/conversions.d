@@ -270,3 +270,8 @@ unittest
     }
     writeln("asRange() => completed");
 }
+
+T wait(T)(Observable!T source)
+{
+    return source.asTask().yieldForce();
+}
