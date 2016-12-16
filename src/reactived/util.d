@@ -203,7 +203,8 @@ Observable!T transparentDump(T)(Observable!T source, string name)
      // dfmt on
 }
 
-void assertEqual(T, Range)(Observable!T source, Range range, string message) if (isInputRange!Range && is(ElementType!Range == T))
+void assertEqual(T, Range)(Observable!T source, Range range, string message = "")
+        if (isInputRange!Range && is(ElementType!Range == T))
 {
     assert(source.sequenceEqual(range).wait(), message);
 }
