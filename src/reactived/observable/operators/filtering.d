@@ -570,7 +570,7 @@ Observable!T debounce(T)(Observable!T source, Duration duration, Scheduler sched
 
             scheduler.run(() {
                 Thread.sleep(duration);
-                
+
                 if (disposable.isDisposed || subscription.isDisposed)
                 {
                     return;
@@ -630,5 +630,76 @@ unittest
 
     subject.onCompleted();
 
+    currentThreadScheduler.work();
+}
+
+Observable!T sample(T)(Observable!T source, Duration window, Scheduler scheduler = taskScheduler)
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        T current;
+        bool stale;
+
+        BooleanDisposable subscription;
+
+        void onNext(T value)
+        {
+            current = value;
+            stale = false;
+        }
+
+        subscription = new BooleanDisposable(source.subscribe(&onNext,
+                &observer.onCompleted, &observer.onError));
+
+        scheduler.run((self) {
+            Thread.sleep(window);
+
+            if(subscription.isDisposed)
+            {
+                return;
+            }
+
+            observer.onNext(current);
+            stale = true;
+
+            self();
+        });
+
+        return subscription;
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    import reactived : Subject;
+    import reactived.util : transparentDump;
+
+    Subject!int subject = new Subject!int();
+
+    void sleep(int msecs)
+    {
+        Thread.sleep(dur!"msecs"(msecs));
+    }
+
+    // dfmt off
+    Disposable sampled = subject.sample(dur!"msecs"(100))
+                                .transparentDump("sample")
+                                .sequenceEqual([1, 2, 3])
+                                .observeOn(currentThreadScheduler)
+                                .subscribe(x => assert(x));
+    // dfmt on
+    subject.onNext(5);
+    subject.onNext(1);
+    sleep(105);
+    subject.onNext(99);
+    sleep(50);
+    subject.onNext(2);
+    sleep(105);
+    subject.onNext(3);
+    sleep(105);
+
+    subject.onCompleted();
     currentThreadScheduler.work();
 }
