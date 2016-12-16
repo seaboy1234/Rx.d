@@ -578,9 +578,64 @@ unittest
     Observable!int observable = defer!(() => single(++k));
     Observable!int control = single(++k);
 
-    foreach(i; 2 .. 10)
+    foreach (i; 2 .. 10)
     {
         observable.transparentDump("defer").assertEqual([i]);
         control.transparentDump("control").assertEqual([1]);
     }
+}
+
+Observable!(ElementType!Range) repeat(Range)(Range items,
+        size_t repeatCount = -1, Scheduler scheduler = taskScheduler)
+        if (isForwardRange!Range)
+{
+    alias T = ElementType!Range;
+
+    Disposable subscribe(Observer!T observer)
+    {
+        size_t localCount = repeatCount;
+        BooleanDisposable subscription = new BooleanDisposable();
+
+        scheduler.run((self) {
+            if(localCount-- == 0)
+            {
+                observer.onCompleted();
+                return;
+            }
+            foreach (value; items.save)
+            {
+                if (subscription.isDisposed)
+                {
+                    return;
+                }
+                observer.onNext(value);
+            }
+            self();
+        });
+
+        return subscription;
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    import reactived.util : transparentDump, assertEqual;
+
+    // dfmt off
+    repeat([1, 2, 3]).take(10)
+                     .observeOn(currentThreadScheduler)
+                     .transparentDump("repeat")
+                     .assertEqual([1, 2, 3, 1, 2, 3, 1, 2, 3, 1]);
+    // dfmt on
+
+    // dfmt off
+    repeat([1, 2, 3], 3)
+                     .observeOn(currentThreadScheduler)
+                     .transparentDump("repeat_times")
+                     .assertEqual([1, 2, 3, 1, 2, 3, 1, 2, 3]);
+    // dfmt on
+
+    currentThreadScheduler.work();
 }
