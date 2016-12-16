@@ -59,6 +59,34 @@ unittest
     +/
 }
 
+Observable!T last(T)(Observable!T source)
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        T current;
+
+        void onNext(T value)
+        {
+            current = value;
+        }
+
+        void onCompleted()
+        {
+            observer.onNext(current);
+            observer.onCompleted();
+        }
+
+        return source.subscribe(&onNext, &onCompleted, &observer.onError);
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    range(1, 10).last().sequenceEqual([10]).subscribe(x => assert(x));
+}
+
 /// Create an Observable sequence which maps input values to an output.
 template map(alias fun)
 {
