@@ -418,7 +418,8 @@ unittest
                                                           .subscribe(x => assert(x));
     // dfmt on
 
-    unfold!(int, int)(1, v => v < 1, v => v + 1, v => v).sequenceEqual(empty!int().asRange).subscribe(v => assert(v));
+    unfold!(int, int)(1, v => v < 1, v => v + 1, v => v).sequenceEqual(empty!int()
+            .asRange).subscribe(v => assert(v));
 }
 
 Observable!size_t interval(Duration duration)
@@ -554,4 +555,32 @@ unittest
     timer(dur!"msecs"(10), dur!"msecs"(10)).take(10).subscribe(v => assert(v < 10), () {
         completed = true;
     });
+}
+
+typeof(fun()) defer(alias fun)()
+        if (isCallable!fun && isObservable!((ReturnType!fun)))
+{
+    alias T = ReturnType!(fun).ElementType;
+
+    Disposable subscribe(Observer!T observer)
+    {
+        return fun().subscribe(observer);
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    import reactived.util : assertEqual, transparentDump;
+
+    int k;
+    Observable!int observable = defer!(() => single(++k));
+    Observable!int control = single(++k);
+
+    foreach(i; 2 .. 10)
+    {
+        observable.transparentDump("defer").assertEqual([i]);
+        control.transparentDump("control").assertEqual([1]);
+    }
 }
