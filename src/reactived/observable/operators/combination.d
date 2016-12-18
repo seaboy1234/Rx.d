@@ -133,9 +133,14 @@ Observable!T merge(T)(Observable!(Observable!T) source) pure @safe nothrow
 unittest
 {
     import reactived : range, map, sequenceEqual;
+    import reactived.util : transparentDump, assertEqual;
 
-    range(0, 3).map!(x => range(1, x)).merge().sequenceEqual([1, 1, 2, 1, 2,
-            3]).subscribe(v => assert(v));
+    // dfmt off
+    range(1, 3).map!(x => range(1, x))
+               .merge()
+               .transparentDump("merge")
+               .assertEqual([1, 1, 2, 1, 2, 3]);
+    // dfmt on
 }
 
 template combineLatest(alias fun)
