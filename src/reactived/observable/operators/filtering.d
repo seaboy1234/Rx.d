@@ -654,7 +654,7 @@ Observable!T sample(T)(Observable!T source, Duration window, Scheduler scheduler
         scheduler.run((self) {
             Thread.sleep(window);
 
-            if(subscription.isDisposed)
+            if (subscription.isDisposed)
             {
                 return;
             }
@@ -702,4 +702,45 @@ unittest
 
     subject.onCompleted();
     currentThreadScheduler.work();
+}
+
+template ofType(TResult)
+{
+    Observable!TResult ofType(T)(Observable!T source)
+    {
+        return source.map!(x => cast(TResult) x).filter!(x => x !is null);
+    }
+}
+
+unittest
+{
+    import reactived.util : assertEqual, transparentDump;
+
+    class A
+    {
+    }
+
+    class B : A
+    {
+    }
+
+    class C : A
+    {
+    }
+
+    class D : B
+    {
+    }
+
+    A[] array = [new A, new B, new C, new D, new C, new B, new A];
+
+    // dfmt off
+
+    array.asObservable()
+         .ofType!B()
+         .transparentDump("ofType")
+         .length()
+         .assertEqual([3UL]); // [B, D, B].length == 3
+
+    // dfmt on
 }
