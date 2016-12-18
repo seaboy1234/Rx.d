@@ -109,38 +109,7 @@ unittest
     o.sequenceEqual([1, 2, 3, 4]).subscribe(v => assert(v));
 }
 
-Observable!T latest(T)(Observable!(Observable!T) source) pure @safe nothrow
-{
-    Disposable subscribe(Observer!T observer)
-    {
-        auto assignment = assignmentDisposable();
-        Disposable subscription;
-
-        void onCompleted()
-        {
-            observer.onCompleted();
-        }
-
-        void onNext(Observable!T value)
-        {
-            assignment = value.subscribe(&observer.onNext, &onCompleted, &observer.onError);
-        }
-
-        subscription = source.subscribe(&onNext, &onCompleted, &observer.onError);
-
-        return new CompositeDisposable(subscription, assignment);
-    }
-
-    return create(&subscribe);
-}
-
-unittest
-{
-    import reactived : range, map, sequenceEqual;
-
-    range(0, 5).map!(x => range(0, x)).latest().sequenceEqual([0, 1, 2, 3, 4])
-        .subscribe(x => assert(x));
-}
+alias latest = switchLatest;
 
 Observable!T merge(T)(Observable!(Observable!T) source) pure @safe nothrow
 {
