@@ -21,7 +21,7 @@ Scheduler defaultScheduler()
     import std.concurrency : initOnce;
 
     __gshared DefaultScheduler default_;
-    return initOnce!default_({ auto p = new DefaultScheduler(); return p; }());
+    return initOnce!default_(new DefaultScheduler());
 }
 
 Scheduler newThreadScheduler()
@@ -29,7 +29,7 @@ Scheduler newThreadScheduler()
     import std.concurrency : initOnce;
 
     __gshared NewThreadScheduler newThread;
-    return initOnce!newThread({ auto p = new NewThreadScheduler(); return p; }());
+    return initOnce!newThread(new NewThreadScheduler());
 }
 
 Scheduler taskScheduler()
@@ -37,7 +37,7 @@ Scheduler taskScheduler()
     import std.concurrency : initOnce;
 
     __gshared TaskScheduler task;
-    return initOnce!task({ auto p = new TaskScheduler(); return p; }());
+    return initOnce!task(new TaskScheduler());
 }
 
 CurrentThreadScheduler currentThreadScheduler()

@@ -21,7 +21,7 @@ class RefCountDisposable : Disposable
     }
 
     /// Instantiates the RefCountDisposable with the specified dispose delegate.
-    this(void delegate() @trusted dispose) pure
+    this(void delegate() @trusted dispose) pure @safe nothrow
     {
         _dispose = dispose;
     }
@@ -34,6 +34,15 @@ class RefCountDisposable : Disposable
         ++_references;
 
         return createDisposable(() => removeReference());
+    }
+
+    Disposable addReference(void delegate() @trusted dg) @safe
+    {
+        enforce(!_disposed, "Cannot invoke on a disposed object!");
+
+        ++_references;
+
+        return createDisposable(() { removeReference(); dg(); });
     }
 
     /// Returns whether it is possible to call dispose without any wait.
@@ -95,12 +104,12 @@ class CompositeDisposable : Disposable
         Disposable[] _disposables;
     }
 
-    this()
+    this() @safe nothrow
     {
 
     }
 
-    this(Disposable[] disposables...)
+    this(Disposable[] disposables...) @safe nothrow
     {
         _disposables = disposables.dup;
     }
@@ -178,17 +187,17 @@ class BooleanDisposable : Disposable
     private void delegate() _dispose;
     private Mutex _mutex;
 
-    this()
+    this() @safe nothrow
     {
         this(empty);
     }
 
-    this(Disposable wrap)
+    this(Disposable wrap) @safe nothrow
     {
         this(&wrap.dispose);
     }
 
-    this(void delegate() dispose)
+    this(void delegate() dispose) @safe nothrow
     {
         _dispose = dispose;
         _mutex = new Mutex(this);
@@ -233,17 +242,17 @@ class ObjectDisposedException : Exception
     }
 }
 
-AssignmentDisposable!Disposable assignmentDisposable(Disposable value = empty)
+AssignmentDisposable!Disposable assignmentDisposable(Disposable value = empty) pure @safe nothrow
 {
     return new AssignmentDisposable!Disposable(value);
 }
 
-AssignmentDisposable!T assignmentDisposable(T : Disposable)(T value)
+AssignmentDisposable!T assignmentDisposable(T : Disposable)(T value) pure @safe nothrow
 {
     return new AssignmentDisposable!T(value);
 }
 
-AssignmentDisposable!T assignmentDisposable(T : Disposable)()
+AssignmentDisposable!T assignmentDisposable(T : Disposable)() @safe nothrow
         if (is(typeof(new T()) : T))
 {
     return new AssignmentDisposable!T();
@@ -261,7 +270,7 @@ class AssignmentDisposable(TDisposable : Disposable) : Disposable
 
     static if (is(typeof(new TDisposable()) : Disposable))
     {
-        package this()
+        package this() @safe nothrow
         {
             this(new TDisposable());
         }
@@ -269,7 +278,7 @@ class AssignmentDisposable(TDisposable : Disposable) : Disposable
 
     static if (is(TDisposable == Disposable))
     {
-        package this()
+        package this() @safe nothrow
         {
             this(empty());
         }
@@ -280,12 +289,12 @@ class AssignmentDisposable(TDisposable : Disposable) : Disposable
         _dispose = value;
     }
 
-    TDisposable disposable() @property
+    TDisposable disposable() @safe @property
     {
         return _dispose;
     }
 
-    void disposable(TDisposable value) @property
+    void disposable(TDisposable value) @trusted @property
     {
         if (_disposed)
         {
@@ -295,7 +304,7 @@ class AssignmentDisposable(TDisposable : Disposable) : Disposable
         _dispose = value;
     }
 
-    void opAssign(TDisposable value)
+    void opAssign(TDisposable value) @safe
     {
         disposable = value;
     }
@@ -362,7 +371,7 @@ Disposable createDisposable(void delegate() onDisposed) @safe
 }
 
 /// Creates a Disposable which has the provided onDisposed function as its dispose method.
-Disposable createDisposable(void function() onDisposed) @safe
+Disposable createDisposable(void function() onDisposed) @safe nothrow
 {
     class AnonymousDisposable : Disposable
     {
@@ -376,7 +385,7 @@ Disposable createDisposable(void function() onDisposed) @safe
 }
 
 /// Creates an empty Disposable.
-Disposable empty() @safe
+Disposable empty() @safe nothrow
 {
     static void dispose() nothrow @safe
     {

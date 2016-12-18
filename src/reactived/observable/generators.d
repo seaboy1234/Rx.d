@@ -140,10 +140,9 @@ Observable!T error(T)(Throwable error) pure @safe nothrow
 ///
 unittest
 {
-    import std.stdio : writeln;
-
-    error!int(new Exception("Test")).subscribe(value => writeln(value),
-            error => writeln("Error: ", error.msg));
+    import reactived.util : dump;
+    
+    error!int(new Exception("Test")).dump("Error");
 
     // => Error: Test
 }
@@ -312,6 +311,7 @@ template start(alias fun, Args...) if (isCallable!fun)
 unittest
 {
     import std.stdio : writeln;
+    import reactived.util : assertEqual;
 
     static int test()
     {
@@ -336,7 +336,7 @@ unittest
 
     testStart.subscribe(&test2).dispose();
 
-    testStart.subscribe(value => assert(value == 3, "value should be 3."));
+    testStart.assertEqual([3], "value should be 3.");
 
     static void test3()
     {
@@ -367,8 +367,7 @@ unittest
         return a + b;
     }
 
-    start!multiArgs(2, 3).observeOn(currentThreadScheduler).subscribe(v => assert(v == 5));
-    currentThreadScheduler.work();
+    start!multiArgs(2, 3).assertEqual([5]);
     assert(published);
 }
 
@@ -625,16 +624,13 @@ unittest
 
     // dfmt off
     repeat([1, 2, 3]).take(10)
-                     .observeOn(currentThreadScheduler)
                      .transparentDump("repeat")
                      .assertEqual([1, 2, 3, 1, 2, 3, 1, 2, 3, 1]);
     // dfmt on
 
     // dfmt off
-    repeat([1, 2, 3], 3)
-                     .observeOn(currentThreadScheduler)
-                     .transparentDump("repeat_times")
-                     .assertEqual([1, 2, 3, 1, 2, 3, 1, 2, 3]);
+    repeat([1, 2, 3], 3).transparentDump("repeat_times")
+                        .assertEqual([1, 2, 3, 1, 2, 3, 1, 2, 3]);
     // dfmt on
 
     currentThreadScheduler.work();

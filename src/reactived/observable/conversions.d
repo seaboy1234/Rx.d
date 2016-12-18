@@ -13,7 +13,7 @@ import reactived.scheduler;
 import reactived.util : LinkedQueue;
 
 /// Create an Observable sequence using an InputRange.
-Observable!(ElementType!Range) asObservable(Range)(Range input) pure @safe nothrow 
+Observable!(ElementType!Range) asObservable(Range)(Range input, Scheduler scheduler = taskScheduler) pure @safe nothrow 
         if (isInputRange!(Range))
 {
     Disposable subscribe(Observer!(ElementType!Range) observer)
@@ -22,7 +22,7 @@ Observable!(ElementType!Range) asObservable(Range)(Range input) pure @safe nothr
 
         BooleanDisposable subscription = new BooleanDisposable();
 
-        taskScheduler.run((void delegate() self) {
+        scheduler.run((void delegate() self) {
             observer.onNext(input.front);
 
             input.popFront();
@@ -30,6 +30,10 @@ Observable!(ElementType!Range) asObservable(Range)(Range input) pure @safe nothr
             if (!input.empty && !subscription.isDisposed)
             {
                 self();
+            }
+            else
+            {
+                observer.onCompleted();
             }
         });
 
@@ -42,17 +46,17 @@ Observable!(ElementType!Range) asObservable(Range)(Range input) pure @safe nothr
 ///
 unittest
 {
-    import std.stdio : writeln;
     import std.concurrency : Generator, yield;
     import reactived.observable : take;
+    import reactived.util : assertEqual, transparentDump;
 
     string[] arr = ["this", "is", "a", "sample", "range"];
 
-    arr.asObservable().observeOn(currentThreadScheduler)
-        .subscribe(value => writeln(value), () => writeln("completed"));
-
-    size_t index;
-    arr.asObservable().observeOn(currentThreadScheduler).subscribe(v => assert(arr[index++] == v));
+    // dfmt off
+    arr.asObservable()
+       .transparentDump("range -> observable")
+       .assertEqual(arr);
+    // dfmt on
 
     auto r = new Generator!int({
         int count;
@@ -62,25 +66,7 @@ unittest
         }
     });
 
-    bool completed;
-    r.asObservable().observeOn(currentThreadScheduler).take(10).subscribe(v => assert(v < 10), () {
-        completed = true;
-    });
-
-    /++
-        Output:
-
-        this
-        is
-        a
-        sample
-        range
-        completed
-    +/
-
-    currentThreadScheduler.work();
-
-    assert(completed);
+    r.asObservable().take(10).assertEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
 }
 
 auto asTask(T)(Observable!T source, TaskPool pool = taskPool)
@@ -132,13 +118,12 @@ auto asTask(T)(Observable!T source, TaskPool pool = taskPool)
 unittest
 {
     import reactived.observable : map, timer, doOnNext;
+    import reactived.util : transparentDump;
     import std.datetime : dur;
     import std.stdio : writeln;
     import std.string : format;
 
-    auto t = timer(dur!"seconds"(1)).map!(v => 100).doOnNext((int v) {
-        writeln("asTask(", v, ")");
-    }).asTask();
+    auto t = timer(dur!"seconds"(1)).map!(v => 100).transparentDump("asTask").asTask();
 
     auto val = t.yieldForce();
 
@@ -186,7 +171,7 @@ auto asRange(T)(Observable!T source) @trusted
                     currentThreadScheduler.work();
                     synchronized (_mutex.reader)
                     {
-                        if(_error !is null)
+                        if (_error !is null)
                         {
                             throw _error;
                         }

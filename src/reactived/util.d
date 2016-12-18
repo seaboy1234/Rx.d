@@ -196,8 +196,8 @@ Observable!T transparentDump(T)(Observable!T source, string name)
     // dfmt off
     return source.doOnEach(
         (T val) => writeln(name, " => ", val),
-        ()      => writeln(name, " => completed"), 
-        e       => writeln(name, " => Error: ", e)
+        ()      => writeln(name, " completed"), 
+        e       => writeln(name, " Error: ", e)
     );
 
      // dfmt on

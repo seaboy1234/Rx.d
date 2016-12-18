@@ -91,12 +91,15 @@ class Subject(T) : Observable!T, Observer!T
         _observers ~= observer;
 
         return createDisposable({
-            size_t index = _observers.countUntil(observer);
-            assert(index != -1);
+            synchronized
+            {
+                size_t index = _observers.countUntil(observer);
+                assert(index != -1);
 
-            _observers = _observers.remove(index);
+                _observers = _observers.remove(index);
 
-            assert(_observers.countUntil(observer) == -1);
+                assert(_observers.countUntil(observer) == -1);
+            }
         });
     }
 }
