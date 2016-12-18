@@ -15,21 +15,42 @@ private template publishSubject(TSubject)
         {
             private TSubject _subject;
             private Observable!T _observable;
+            private AssignmentDisposable!Disposable _subscription;
+            private bool _connected;
 
-            this(Observable!T observable)
+            this(Observable!T observable) pure @safe nothrow
             {
                 _subject = new TSubject();
                 _observable = observable;
+                _subscription = assignmentDisposable();
             }
 
             void connect()
             {
-                _observable.subscribe(_subject);
+                if (!_connected)
+                {
+                    _connected = true;
+                    _subscription = _observable.subscribe(_subject);
+                }
+            }
+
+            bool connected() const @safe @property
+            {
+                return _connected;
             }
 
             Disposable subscribe(Observer!T observer)
             {
                 return _subject.subscribe(observer);
+            }
+
+            void disconnect() @trusted
+            {
+                if (_connected)
+                {
+                    _connected = false;
+                    _subscription.disposable.dispose();
+                }
             }
         }
 
@@ -88,16 +109,88 @@ unittest
 
     uint[] items = (uint[]).init;
 
-    o.subscribe((x) { items ~= x; });
+    auto d1 = o.subscribe((x) { items ~= x; });
 
-    o.dump("replay()");
+    auto d2 = o.dump("replay()");
 
     o.connect();
 
     currentThreadScheduler.work();
 
     int index;
-    o.subscribe((x) => assert(items[index++] == x));
+    auto d3 = o.subscribe((x) => assert(items[index++] == x));
 
     currentThreadScheduler.work();
+
+    d1.dispose();
+    d2.dispose();
+    d3.dispose();
+}
+
+Observable!T refCount(T)(ConnectableObservable!T source) pure @safe nothrow
+{
+    static class RefCountedObservable : Observable!T
+    {
+        private RefCountDisposable _references;
+        private ConnectableObservable!T _source;
+
+        this(ConnectableObservable!T source) pure
+        {
+            _source = source;
+            _references = new RefCountDisposable(() @trusted{
+                source.disconnect();
+            });
+        }
+
+        Disposable subscribe(Observer!T observer)
+        {
+            Disposable counted = _references.addReference(() {
+                if (_references.canDispose)
+                {
+                    _references.dispose();
+                }
+            });
+            Disposable subscription = _source.subscribe(observer);
+
+            if (!_source.connected)
+            {
+                _source.connect();
+            }
+
+            return new CompositeDisposable(counted, subscription);
+        }
+    }
+
+    return new RefCountedObservable(source);
+}
+
+unittest
+{
+    import std.random : Random, unpredictableSeed;
+    import reactived.util : transparentDump;
+    import reactived.scheduler : observeOn, currentThreadScheduler;
+
+    int subscriptions;
+
+    // dfmt off
+    auto o = range(0, 10).take(10)
+                         .doOnSubscription((Observer!int) {subscriptions++;}, (Observer!int){subscriptions--;})
+                         .transparentDump("refCount")
+                         .publish()
+                         .refCount();
+    // dfmt on
+
+    int[] items = (int[]).init;
+
+    auto d1 = o.subscribe((x) { items ~= x; });
+
+    int index;
+    auto d2 = o.subscribe((x) => assert(items[index++] == x));
+
+    assert(subscriptions == 1);
+
+    d1.dispose();
+    d2.dispose();
+
+    assert(subscriptions == 0);
 }

@@ -117,6 +117,9 @@ interface GroupedObservable(TKey, TValue) : Observable!TValue
 interface ConnectableObservable(T) : Observable!T
 {
     void connect();
+    void disconnect();
+
+    bool connected() const @property;
 }
 
 Disposable subscribe(T, O)(Observable!T observable, O observer)
@@ -170,21 +173,21 @@ Observable!E asObservable(T, E)(T observable) if (isObservableOfElement!(T, E))
 template isObservableOfElement(T, E)
 {
     enum bool isObservableOfElement = is(typeof({
-            T observable = T.init;
-            Observer!E observer = void;
+                T observable = T.init;
+                Observer!E observer = void;
 
-            Disposable x = observable.subscribe(observer);
-    }));
+                Disposable x = observable.subscribe(observer);
+            }));
 }
 
 template isObservable(T)
 {
     enum bool isObservable = is(typeof({
-        T observable = T.init;
-        alias E = ElementType!T;
+                T observable = T.init;
+                alias E = ElementType!T;
 
-        return isObservableOfElement!(T, E);
-    }));
+                return isObservableOfElement!(T, E);
+            }));
 }
 
 unittest
