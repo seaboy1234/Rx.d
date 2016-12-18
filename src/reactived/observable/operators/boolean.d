@@ -333,7 +333,14 @@ Observable!bool sequenceEqual(T, Range)(Observable!T source, Range sequence) pur
 
         void onCompleted()
         {
-            observer.onNext(true);
+            if (sequence.empty)
+            {
+                observer.onNext(true);
+            }
+            else
+            {
+                observer.onNext(false);
+            }
             observer.onCompleted();
         }
 
@@ -347,5 +354,6 @@ unittest
 {
     range(0, 4).sequenceEqual([0, 1, 2, 3]).subscribe(v => assert(v));
     range(1, 4).sequenceEqual([0, 1, 2, 3]).subscribe(v => assert(!v));
+    range(0, 0).sequenceEqual([9, 1091, 7]).subscribe(v => assert(!v));
     single(10).sequenceEqual([10]).subscribe(v => assert(v));
 }
