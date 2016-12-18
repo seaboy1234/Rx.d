@@ -56,7 +56,6 @@ class Subject(T) : Observable!T, Observer!T
         {
             onError(e);
         }
-        _observers = Observer!(T)[].init;
         _completed = true;
     }
 
