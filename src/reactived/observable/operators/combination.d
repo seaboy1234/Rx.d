@@ -423,3 +423,89 @@ unittest
 
     subject.onCompleted();
 }
+
+Observable!T concat(T)(Observable!(Observable!T) sources...)
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        auto subscription = assignmentDisposable();
+        CompositeDisposable composite = new CompositeDisposable(subscription);
+        LinkedQueue!(Observable!T) observables = new LinkedQueue!(Observable!T);
+        bool completed, waiting;
+
+        void onError(Throwable e)
+        {
+            composite.dispose();
+            observer.onError(e);
+        }
+
+        void onCompleted()
+        {
+            if (completed && observables.empty)
+            {
+                subscription.dispose();
+                observer.onCompleted();
+                return;
+            }
+            else if (observables.empty)
+            {
+                waiting = true;
+                return;
+            }
+
+            subscription = observables.dequeue.subscribe(&observer.onNext,
+                    &onCompleted, &onError);
+        }
+
+        void onNext(Observable!T value)
+        {
+            observables.enqueue(value);
+            if (waiting)
+            {
+                onCompleted();
+            }
+        }
+
+        void onSourcesCompleted()
+        {
+            if (waiting)
+            {
+                observer.onCompleted();
+            }
+            completed = true;
+        }
+
+        waiting = true;
+
+        composite ~= sources.subscribe(&onNext, &onSourcesCompleted, &onError);
+
+        return subscription;
+    }
+
+    return create(&subscribe);
+}
+
+Observable!(T[0].ElementType) concat(T...)(T sources) if (T.length > 1)
+{
+    T[0][] items;
+
+    foreach (i, value; sources)
+    {
+        static if (!is(T[i] == T[0]))
+        {
+            static assert(0, T[i].mangleof ~ "is not a " ~ T[0].mangleof ~ "!");
+        }
+        items ~= value;
+    }
+
+    return concat(items.asObservable());
+}
+
+unittest
+{
+    import reactived.util : assertEqual, transparentDump;
+
+    single(1).concat(single(2), single(3)).transparentDump("concat").assertEqual([1, 2, 3]);
+
+    assert(!is(typeof({ concat(single(1), single("1")); })));
+}
