@@ -396,12 +396,12 @@ unittest
     import std.exception : assertThrown, assertNotThrown;
 
     // dfmt off
-    assertThrown(single!int(1).delay(dur!"msecs"(101))
-                              .timeout(dur!"msecs"(100), defaultScheduler)
-                              .subscribe(x => assert(x)));
+    assertThrown(single!int(1).delay(dur!"msecs"(200))
+                              .timeout(dur!"msecs"(100))
+                              .wait());
 
     assertNotThrown(single!int(1).timeout(dur!"msecs"(100))
-                                 .subscribe(x => assert(x)));
+                                 .wait());
     // dfmt on
 }
 

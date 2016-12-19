@@ -18,7 +18,37 @@ interface Observable(T)
     final Disposable subscribe(void delegate(T value) onNext_,
             void delegate() onCompleted_, void delegate(Throwable) onError_)
     {
-        return subscribe(new ObserverBase!T(onNext_, onCompleted_, onError_));
+        static class AnonymousObserver(T) : ObserverBase!T
+        {
+            private void delegate(T) _onNext;
+            private void delegate() _onCompleted;
+            private void delegate(Throwable) _onError;
+
+            this(void delegate(T) onNext, void delegate() onCompleted,
+                    void delegate(Throwable) onError)
+            {
+                _onNext = onNext;
+                _onCompleted = onCompleted;
+                _onError = onError;
+            }
+
+            override void onNextCore(T value)
+            {
+                _onNext(value);
+            }
+
+            override void onCompletedCore()
+            {
+                _onCompleted();
+            }
+
+            override void onErrorCore(Throwable error)
+            {
+                _onError(error);
+            }
+        }
+
+        return subscribe(new AnonymousObserver!T(onNext_, onCompleted_, onError_));
     }
 
     /// Subscribe to an Observable using an onNext method and empty stubs for onCompleted and onError.
@@ -73,21 +103,15 @@ interface ConnectableObservable(T) : Observable!T
     bool connected() const @property;
 }
 
-package class ObserverBase(T) : Observer!T
+abstract package class ObserverBase(T) : Observer!T
 {
     private bool _completed;
-    private void delegate(T) _onNext;
-    private void delegate() _onCompleted;
-    private void delegate(Throwable) _onError;
 
-    this(void delegate(T) onNext, void delegate() onCompleted, void delegate(Throwable) onError)
-    {
-        _onNext = onNext;
-        _onCompleted = onCompleted;
-        _onError = onError;
-    }
+    abstract void onNextCore(T value);
+    abstract void onCompletedCore();
+    abstract void onErrorCore(Throwable error);
 
-    void onNext(T value)
+    final void onNext(T value)
     {
         try
         {
@@ -97,7 +121,7 @@ package class ObserverBase(T) : Observer!T
                 {
                     return;
                 }
-                _onNext(value);
+                onNextCore(value);
             }
         }
         catch (Exception e)
@@ -106,7 +130,7 @@ package class ObserverBase(T) : Observer!T
         }
     }
 
-    void onCompleted()
+    final void onCompleted()
     {
         synchronized (this)
         {
@@ -115,11 +139,11 @@ package class ObserverBase(T) : Observer!T
                 return;
             }
             _completed = true;
-            _onCompleted();
+            onCompletedCore();
         }
     }
 
-    void onError(Throwable error)
+    final void onError(Throwable error)
     {
         synchronized (this)
         {
@@ -128,7 +152,8 @@ package class ObserverBase(T) : Observer!T
                 return;
             }
 
-            _onError(error);
+            _completed = true;
+            onErrorCore(error);
         }
     }
 }
