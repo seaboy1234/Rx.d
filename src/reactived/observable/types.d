@@ -104,7 +104,7 @@ interface ConnectableObservable(T) : Observable!T
     bool connected() const @property;
 }
 
-abstract package class ObserverBase(T) : Observer!T
+abstract package(reactived) class ObserverBase(T) : Observer!T
 {
     private bool _completed;
 
