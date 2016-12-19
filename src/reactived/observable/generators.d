@@ -635,3 +635,31 @@ unittest
 
     currentThreadScheduler.work();
 }
+
+Observable!TResult when(TResult, TSources...)(Plan!(TResult, TSources) plan)
+{
+    Disposable subscribe(Observer!TResult observer)
+    {
+        return plan.subscribe(observer);
+    }
+    return create(&subscribe);
+}
+
+unittest
+{
+    import reactived.util : transparentDump;
+
+    assert(single(1).and(single(2), single(3))
+                    .then!int((a, b, c) => a + b + c)
+                    .when()
+                    .transparentDump("AndThenWhen")
+                    .wait() == 6);
+    
+    assert(range(0, 10).and(range(0, 20).skip(1))
+                       .and(range(0, 30).skip(2))
+                       .then!int((a, b, c) => a + b + c)
+                       .when()
+                       .transparentDump("AndThenTen")
+                       .length()
+                       .wait() == 10);
+}
