@@ -261,13 +261,22 @@ Observable!(Timestamp!T) timestamp(T)(Observable!T source)
     return source.map!(x => Timestamp!T(Clock.currTime(), x));
 }
 
+template delay(alias fun)
+{
+    Observable!T delay(T)(Observable!T source)
+    {
+        // dfmt off
+        return source.materialize()
+                    .doOnNext((Notification!T x) { Thread.sleep(unaryFun!fun(x.value)); })
+                    .dematerialize();
+        // dfmt on
+    }
+
+}
+
 Observable!T delay(T)(Observable!T source, Duration delay)
 {
-    // dfmt off
-    return source.materialize()
-                 .doOnNext((Notification!T) { Thread.sleep(delay); })
-                 .dematerialize();
-    // dfmt on
+    return source.delay!((T) => delay);
 }
 
 unittest
