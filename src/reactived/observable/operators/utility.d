@@ -449,3 +449,12 @@ unittest
     // dfmt on
     assert(disposed);
 }
+
+Observable!T encapsulate(T)(Observable!T source)
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        return source.subscribe(observer);
+    }
+    return create(&subscribe);
+}
