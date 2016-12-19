@@ -5,6 +5,7 @@ import std.datetime;
 
 import core.sync.rwmutex;
 import core.sync.mutex;
+import core.thread;
 
 import reactived.observable;
 import reactived.observer;
@@ -295,4 +296,81 @@ unittest
 
     assert(vals.length > 0);
     assert(vals.length != 1);
+}
+
+Observable!(Observable!T) window(T)(Observable!T source, Duration size,
+        Scheduler scheduler = taskScheduler)
+{
+    Disposable subscribe(Observer!(Observable!T) observer)
+    {
+        import reactived : Subject;
+
+        Subject!T current = new Subject!T();
+        BooleanDisposable subscription = new BooleanDisposable();
+        bool completed;
+
+        void onNext(T value)
+        {
+            current.onNext(value);
+        }
+
+        void onCompleted()
+        {
+            completed = true;
+            current.onCompleted();
+        }
+
+        void onError(Throwable e)
+        {
+            completed = true;
+            current.onError(e);
+        }
+
+        scheduler.run((self) {
+            Thread.sleep(size);
+
+            Subject!T old = current;
+
+            if (completed)
+            {
+                old.onCompleted();
+                observer.onCompleted();
+            }
+            else if (!subscription.isDisposed)
+            {
+                observer.onNext(current = new Subject!T());
+                old.onCompleted();
+
+                self();
+            }
+        });
+
+        observer.onNext(current);
+
+        subscription = new BooleanDisposable(source.subscribe(&onNext, &onCompleted, &onError));
+
+        return subscription;
+    }
+
+    return create(&subscribe);
+}
+
+unittest
+{
+    import std.conv : to;
+    import std.random : uniform;
+    import std.typecons : tuple;
+    import reactived.util : transparentDump, dump;
+
+    int current;
+
+    // dfmt off
+    assert(range(0, 100).delay!(x => dur!"msecs"(uniform(1, 10)))
+                        .window(dur!"msecs"(100))
+                        .flatMap!(x => x.transparentDump("window" ~ (current++).to!string())
+                                        .length())
+                        .scan!((a, b) => a + b)
+                        .transparentDump("Total items")
+                        .wait() == 100);
+    // dfmt on
 }
