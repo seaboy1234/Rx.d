@@ -307,11 +307,15 @@ Observable!(Observable!T) window(T)(Observable!T source, Duration size,
 
         Subject!T current = new Subject!T();
         BooleanDisposable subscription = new BooleanDisposable();
-        bool completed;
+        Mutex mutex = new Mutex();
+        bool completed, error;
 
         void onNext(T value)
         {
-            current.onNext(value);
+            synchronized (mutex)
+            {
+                current.onNext(value);
+            }
         }
 
         void onCompleted()
@@ -322,8 +326,8 @@ Observable!(Observable!T) window(T)(Observable!T source, Duration size,
 
         void onError(Throwable e)
         {
-            completed = true;
-            current.onError(e);
+            error = true;
+            observer.onError(e);
         }
 
         scheduler.run((self) {
@@ -331,17 +335,22 @@ Observable!(Observable!T) window(T)(Observable!T source, Duration size,
 
             Subject!T old = current;
 
-            if (completed)
+            if (!error)
             {
-                old.onCompleted();
-                observer.onCompleted();
-            }
-            else if (!subscription.isDisposed)
-            {
-                observer.onNext(current = new Subject!T());
-                old.onCompleted();
-
-                self();
+                if (completed)
+                {
+                    old.onCompleted();
+                    observer.onCompleted();
+                }
+                else if (!subscription.isDisposed)
+                {
+                    synchronized (mutex)
+                    {
+                        observer.onNext(current = new Subject!T());
+                        old.onCompleted();
+                    }
+                    self();
+                }
             }
         });
 
