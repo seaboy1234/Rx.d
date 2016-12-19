@@ -18,56 +18,7 @@ interface Observable(T)
     final Disposable subscribe(void delegate(T value) onNext_,
             void delegate() onCompleted_, void delegate(Throwable) onError_)
     {
-        class AnonymousObserver : Observer!T
-        {
-            private bool _completed;
-            void onNext(T value)
-            {
-                try
-                {
-                    synchronized (this)
-                    {
-                        if (_completed)
-                        {
-                            return;
-                        }
-                        onNext_(value);
-                    }
-                }
-                catch (Exception e)
-                {
-                    onError(e);
-                }
-            }
-
-            void onCompleted()
-            {
-                synchronized (this)
-                {
-                    if (_completed)
-                    {
-                        return;
-                    }
-                    _completed = true;
-                    onCompleted_();
-                }
-            }
-
-            void onError(Throwable error)
-            {
-                synchronized (this)
-                {
-                    if (_completed)
-                    {
-                        return;
-                    }
-
-                    onError_(error);
-                }
-            }
-        }
-
-        return subscribe(new AnonymousObserver());
+        return subscribe(new ObserverBase!T(onNext_, onCompleted_, onError_));
     }
 
     /// Subscribe to an Observable using an onNext method and empty stubs for onCompleted and onError.
@@ -120,6 +71,66 @@ interface ConnectableObservable(T) : Observable!T
     void disconnect();
 
     bool connected() const @property;
+}
+
+package class ObserverBase(T) : Observer!T
+{
+    private bool _completed;
+    private void delegate(T) _onNext;
+    private void delegate() _onCompleted;
+    private void delegate(Throwable) _onError;
+
+    this(void delegate(T) onNext, void delegate() onCompleted, void delegate(Throwable) onError)
+    {
+        _onNext = onNext;
+        _onCompleted = onCompleted;
+        _onError = onError;
+    }
+
+    void onNext(T value)
+    {
+        try
+        {
+            synchronized (this)
+            {
+                if (_completed)
+                {
+                    return;
+                }
+                _onNext(value);
+            }
+        }
+        catch (Exception e)
+        {
+            onError(e);
+        }
+    }
+
+    void onCompleted()
+    {
+        synchronized (this)
+        {
+            if (_completed)
+            {
+                return;
+            }
+            _completed = true;
+            _onCompleted();
+        }
+    }
+
+    void onError(Throwable error)
+    {
+        synchronized (this)
+        {
+            if (_completed)
+            {
+                return;
+            }
+
+            _onError(error);
+        }
+    }
 }
 
 Disposable subscribe(T, O)(Observable!T observable, O observer)
