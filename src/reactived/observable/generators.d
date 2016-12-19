@@ -158,8 +158,10 @@ Observable!T never(T)() pure @safe nothrow
     return create(&subscribe);
 }
 
+alias single = just;
+
 /// Create an Observable sequence which emits only a single value.
-Observable!T single(T)(T value) pure @safe nothrow
+Observable!T just(T)(T value) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -177,16 +179,9 @@ Observable!T single(T)(T value) pure @safe nothrow
 ///
 unittest
 {
-    import std.stdio : writeln;
+    import reactived.util : assertEqual;
 
-    single("single value").subscribe(value => writeln(value), () => writeln("completed"));
-
-    /++
-        Output:
-
-        single value
-        completed
-    +/
+    just("this").assertEqual(["this"]);
 }
 
 /// Creates an Observable which emits no elements and completes immediately.
@@ -649,11 +644,11 @@ unittest
 {
     import reactived.util : transparentDump;
 
-    assert(single(1).and(single(2), single(3))
-                    .then!int((a, b, c) => a + b + c)
-                    .when()
-                    .transparentDump("AndThenWhen")
-                    .wait() == 6);
+    assert(just(1).and(just(2), just(3))
+                  .then!int((a, b, c) => a + b + c)
+                  .when()
+                  .transparentDump("AndThenWhen")
+                  .wait() == 6);
     
     assert(range(0, 10).and(range(0, 20).skip(1))
                        .and(range(0, 30).skip(2))
