@@ -32,6 +32,7 @@ interface Observable(T)
                 _onError = onError;
             }
 
+        protected:
             override void onNextCore(T value)
             {
                 _onNext(value);
@@ -107,10 +108,12 @@ abstract package class ObserverBase(T) : Observer!T
 {
     private bool _completed;
 
+protected:
     abstract void onNextCore(T value);
     abstract void onCompletedCore();
     abstract void onErrorCore(Throwable error);
 
+public:
     final void onNext(T value)
     {
         try
