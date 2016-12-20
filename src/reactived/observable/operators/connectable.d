@@ -44,7 +44,7 @@ private template publishSubject(TSubject)
                 return _subject.subscribe(observer);
             }
 
-            void disconnect() @trusted
+            void disconnect() @nogc @trusted
             {
                 if (_connected)
                 {

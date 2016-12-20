@@ -93,7 +93,11 @@ auto asTask(T)(Observable!T source, TaskPool pool = taskPool)
             onCompleted();
         }
 
-        source.observeOn(currentThreadScheduler).subscribe(&onNext, &onCompleted, &onError);
+        Disposable subscription = source.observeOn(currentThreadScheduler).subscribe(&onNext, &onCompleted, &onError);
+        scope(exit)
+        {
+            subscription.dispose();
+        }
 
         while (!completed)
         {

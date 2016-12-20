@@ -89,17 +89,33 @@ class Subject(T) : Observable!T, Observer!T
 
         _observers ~= observer;
 
-        return createDisposable({
+        return createDisposable(() @nogc{
+            if (_completed)
+            {
+                return;
+            }
             synchronized
             {
-                size_t index = _observers.countUntil(observer);
+                size_t index = indexOf(observer);
                 assert(index != -1);
 
                 _observers = _observers.remove(index);
-
-                assert(_observers.countUntil(observer) == -1);
+                assert(indexOf(observer) == -1);
             }
         });
+    }
+
+    private size_t indexOf(Observer!T observer) pure @safe @nogc
+    {
+        foreach (i, value; _observers)
+        {
+            if (value is observer)
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 }
 

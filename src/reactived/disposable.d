@@ -4,7 +4,7 @@ module reactived.disposable;
 interface Disposable
 {
     /// Causes this Disposable to release resources which it has allocated.
-    void dispose();
+    void dispose() @nogc;
 }
 
 /// Represents a Disposable which will wait for all references to it to be dropped before disposing.
@@ -17,13 +17,18 @@ class RefCountDisposable : Disposable
         bool _disposed;
         int _references;
 
-        void delegate() @trusted _dispose;
+        void delegate() @nogc @trusted _dispose;
     }
 
     /// Instantiates the RefCountDisposable with the specified dispose delegate.
-    this(void delegate() @trusted dispose) pure @safe nothrow
+    this(void delegate() @nogc @trusted dispose) pure @safe nothrow
     {
         _dispose = dispose;
+    }
+
+    ~this()
+    {
+        dispose();
     }
 
     /// Adds a reference to this RefCountDisposable.
@@ -36,7 +41,7 @@ class RefCountDisposable : Disposable
         return createDisposable(() => removeReference());
     }
 
-    Disposable addReference(void delegate() @trusted dg) @safe
+    Disposable addReference(void delegate() @nogc @trusted dg) @safe
     {
         enforce(!_disposed, "Cannot invoke on a disposed object!");
 
@@ -46,14 +51,18 @@ class RefCountDisposable : Disposable
     }
 
     /// Returns whether it is possible to call dispose without any wait.
-    bool canDispose() pure inout @safe @property
+    bool canDispose() pure inout @nogc @safe @property
     {
-        return _references == 0 && !_disposed;
+        return _references == 0;
     }
 
     /// Disposes the RefCountDisposable.
-    void dispose() @safe
+    void dispose() @nogc @safe
     {
+        if (_disposed)
+        {
+            return;
+        }
         while (!canDispose)
         {
         }
@@ -63,10 +72,10 @@ class RefCountDisposable : Disposable
     }
 
 private:
-    void removeReference() @safe
+    void removeReference() @nogc @safe
     {
-        enforce(!_disposed, "Cannot invoke on a disposed object!");
-        enforce(_references > 0, "Cannot have negative references!");
+        assert(!_disposed, "Cannot invoke on a disposed object!");
+        assert(_references > 0, "Cannot have negative references!");
 
         --_references;
     }
@@ -101,6 +110,7 @@ class CompositeDisposable : Disposable
 {
     private
     {
+        private bool _disposed;
         Disposable[] _disposables;
     }
 
@@ -112,6 +122,11 @@ class CompositeDisposable : Disposable
     this(Disposable[] disposables...) @safe nothrow
     {
         _disposables = disposables.dup;
+    }
+
+    ~this()
+    {
+        dispose(false);
     }
 
     T opBinary(string op, T)(T rhs)
@@ -136,7 +151,6 @@ class CompositeDisposable : Disposable
 
     void opIndexAssign(size_t index, Disposable value)
     {
-        _disposables[index].dispose();
         _disposables[index] = value;
     }
 
@@ -145,8 +159,25 @@ class CompositeDisposable : Disposable
         _disposables ~= disposable;
     }
 
-    void dispose()
+    void dispose() @nogc
     {
+        dispose(true);
+    }
+
+    private void dispose(bool disposing) @nogc
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+
+        if (!disposing)
+        {
+            return;
+        }
+
         try
         {
             foreach (value; _disposables)
@@ -166,7 +197,7 @@ unittest
     auto composite = new CompositeDisposable();
     auto refCount = new RefCountDisposable({  });
 
-    composite.add(createDisposable({
+    composite.add(createDisposable(() @nogc{
             assert(!refCount.canDispose(), "refCount has references.");
         }));
 
@@ -184,8 +215,7 @@ class BooleanDisposable : Disposable
     import core.sync.mutex : Mutex;
 
     private bool _isDisposed;
-    private void delegate() _dispose;
-    private Mutex _mutex;
+    private void delegate() @nogc _dispose;
 
     this() @safe nothrow
     {
@@ -197,26 +227,33 @@ class BooleanDisposable : Disposable
         this(&wrap.dispose);
     }
 
-    this(void delegate() dispose) @safe nothrow
+    this(void delegate() @nogc dispose) @safe nothrow
     {
         _dispose = dispose;
-        _mutex = new Mutex(this);
+    }
+
+    ~this()
+    {
+        dispose();
     }
 
     bool isDisposed() inout @safe @property
     {
-        synchronized (_mutex)
+        synchronized (this)
         {
             return _isDisposed;
         }
     }
 
-    void dispose()
+    void dispose() @nogc
     {
-        synchronized (_mutex)
+        synchronized (this)
         {
             _isDisposed = true;
-            _dispose();
+            if (_dispose !is null)
+            {
+                _dispose();
+            }
         }
     }
 }
@@ -252,7 +289,7 @@ AssignmentDisposable!T assignmentDisposable(T : Disposable)(T value) pure @safe 
     return new AssignmentDisposable!T(value);
 }
 
-AssignmentDisposable!T assignmentDisposable(T : Disposable)() @safe nothrow
+AssignmentDisposable!T assignmentDisposable(T : Disposable)() @safe nothrow 
         if (is(typeof(new T()) : T))
 {
     return new AssignmentDisposable!T();
@@ -289,17 +326,24 @@ class AssignmentDisposable(TDisposable : Disposable) : Disposable
         _dispose = value;
     }
 
-    TDisposable disposable() @safe @property
+    ~this()
+    {
+        dispose();
+    }
+
+    TDisposable disposable() @nogc @safe @property
     {
         return _dispose;
     }
 
-    void disposable(TDisposable value) @trusted @property
+    void disposable(TDisposable value) @nogc @trusted @property
     {
-        if (_disposed)
+        if(_disposed)
         {
-            throw new ObjectDisposedException();
+            value.dispose();
+            return;
         }
+
         _dispose.dispose();
         _dispose = value;
     }
@@ -357,37 +401,71 @@ unittest
 }
 
 /// Creates a Disposable which has the provided onDisposed delegate as its dispose method.
-Disposable createDisposable(void delegate() onDisposed) @safe
+Disposable createDisposable(void delegate() @nogc onDisposed) @safe
 {
-    class AnonymousDisposable : Disposable
+    static class AnonymousDisposable : Disposable
     {
-        void dispose() @trusted
+        private bool _disposed;
+        void delegate() @nogc _onDisposed;
+
+        this(void delegate() @nogc onDisposed)
         {
-            onDisposed();
+            _onDisposed = onDisposed;
+        }
+
+        ~this()
+        {
+            dispose();
+        }
+
+        void dispose() @nogc @trusted
+        {
+            if (!_disposed)
+            {
+                _disposed = true;
+                _onDisposed();
+            }
         }
     }
 
-    return new AnonymousDisposable();
+    return new AnonymousDisposable(onDisposed);
 }
 
 /// Creates a Disposable which has the provided onDisposed function as its dispose method.
-Disposable createDisposable(void function() onDisposed) @safe nothrow
+Disposable createDisposable(void function() @nogc onDisposed) @safe nothrow
 {
-    class AnonymousDisposable : Disposable
+    static class AnonymousDisposable : Disposable
     {
-        void dispose() @trusted
+        private bool _disposed;
+        void function() @nogc _onDisposed;
+
+        this(void function() @nogc onDisposed)
         {
-            onDisposed();
+            _onDisposed = onDisposed;
+        }
+
+        ~this()
+        {
+            dispose();
+        }
+
+        void dispose() @nogc @trusted
+        {
+            if (!_disposed)
+            {
+                _disposed = true;
+                _onDisposed();
+            }
         }
     }
 
-    return new AnonymousDisposable();
+    return new AnonymousDisposable(onDisposed);
 }
 
 /// Creates an empty Disposable.
 Disposable empty() @safe nothrow
 {
-    static void dispose() nothrow @safe
+    static void dispose() nothrow @safe @nogc
     {
 
     }

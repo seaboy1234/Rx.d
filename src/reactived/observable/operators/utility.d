@@ -129,13 +129,13 @@ Observable!T doOnError(T)(Observable!T observable, void delegate(Throwable) onEr
     Forwards subscription events to the given `onSubscribe` and `onUnsubscribe` handlers.
 */
 Observable!T doOnSubscription(T)(Observable!T observable,
-        void delegate(Observer!T) onSubscribe, void delegate(Observer!T) onUnsubscribe) pure @safe nothrow
+        void delegate(Observer!T) onSubscribe, void delegate(Observer!T) @nogc onUnsubscribe) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
         onSubscribe(observer);
 
-        return new CompositeDisposable(createDisposable(() {
+        return new CompositeDisposable(createDisposable(() @nogc {
                 onUnsubscribe(observer);
             }), observable.subscribe(observer));
     }

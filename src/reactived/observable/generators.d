@@ -44,7 +44,7 @@ Observable!T create(T)(Disposable delegate(Observer!T) subscribe) pure @safe not
 ///
 unittest
 {
-    import std.stdio : writeln;
+    import reactived.util : assertEqual;
 
     Disposable subscribe(Observer!int observer)
     {
@@ -59,17 +59,7 @@ unittest
 
     auto observable = create(&subscribe);
 
-    observable.subscribe(value => writeln("observer.onNext(", value, ")"),
-            () => writeln("observer.onCompleted()"));
-
-    /++
-        Output:
-
-        observer.onNext(1)
-        observer.onNext(2)
-        observer.onNext(3)
-        observer.onCompleted()
-    +/
+    observable.assertEqual([1, 2, 3]);
 }
 
 /++
@@ -81,7 +71,7 @@ unittest
  + See_Also:
  + create(T)(Disposable delegate(Observer!T))
  +/
-Observable!T create(T)(void delegate() delegate(Observer!T) subscribe) pure @safe nothrow
+Observable!T create(T)(void delegate() @nogc delegate(Observer!T) subscribe) pure @safe nothrow
 {
     Disposable subscribe_(Observer!T observer)
     {
@@ -94,9 +84,9 @@ Observable!T create(T)(void delegate() delegate(Observer!T) subscribe) pure @saf
 ///
 unittest
 {
-    import std.stdio : writeln;
+    import reactived.util : assertEqual;
 
-    void delegate() subscribe(Observer!int observer)
+    void delegate() @nogc subscribe(Observer!int observer)
     {
         observer.onNext(1);
         observer.onNext(2);
@@ -109,17 +99,7 @@ unittest
 
     auto observable = create(&subscribe);
 
-    observable.subscribe(value => writeln("observer.onNext(", value, ")"),
-            () => writeln("observer.onCompleted()"));
-
-    /++
-        Output:
-
-        observer.onNext(1)
-        observer.onNext(2)
-        observer.onNext(3)
-        observer.onCompleted()
-    +/
+    observable.assertEqual([1, 2, 3]);
 }
 
 /++
@@ -141,7 +121,7 @@ Observable!T error(T)(Throwable error) pure @safe nothrow
 unittest
 {
     import reactived.util : dump;
-    
+
     error!int(new Exception("Test")).dump("Error");
 
     // => Error: Test
@@ -491,22 +471,7 @@ Observable!size_t timer(Duration start, Scheduler scheduler)
 
 unittest
 {
-    int count;
-
-    // dfmt off
-
-    timer(dur!"msecs"(100)).subscribe((v) { 
-        assert(v == 0); 
-        count++; 
-    }, () {
-        assert(count == 1);
-    });
-
-    // dfmt on
-
-    while (count != 1)
-    {
-    }
+    assert(timer(dur!"msecs"(100)).wait() == 0);
 }
 
 Observable!size_t timer(Duration start, Duration period)
@@ -591,7 +556,7 @@ Observable!(ElementType!Range) repeat(Range)(Range items,
         BooleanDisposable subscription = new BooleanDisposable();
 
         scheduler.run((self) {
-            if(localCount-- == 0)
+            if (localCount-- == 0)
             {
                 observer.onCompleted();
                 return;
@@ -637,6 +602,7 @@ Observable!TResult when(TResult, TSources...)(Plan!(TResult, TSources) plan)
     {
         return plan.subscribe(observer);
     }
+
     return create(&subscribe);
 }
 
@@ -644,17 +610,10 @@ unittest
 {
     import reactived.util : transparentDump;
 
-    assert(just(1).and(just(2), just(3))
-                  .then!int((a, b, c) => a + b + c)
-                  .when()
-                  .transparentDump("AndThenWhen")
-                  .wait() == 6);
-    
-    assert(range(0, 10).and(range(0, 20).skip(1))
-                       .and(range(0, 30).skip(2))
-                       .then!int((a, b, c) => a + b + c)
-                       .when()
-                       .transparentDump("AndThenTen")
-                       .length()
-                       .wait() == 10);
+    assert(just(1).and(just(2), just(3)).then!int((a, b, c) => a + b + c).when()
+            .transparentDump("AndThenWhen").wait() == 6);
+
+    assert(range(0, 10).and(range(0, 20).skip(1)).and(range(0, 30).skip(2))
+            .then!int((a, b, c) => a + b + c).when()
+            .transparentDump("AndThenTen").length().wait() == 10);
 }

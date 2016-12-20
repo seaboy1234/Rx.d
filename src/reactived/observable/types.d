@@ -99,7 +99,7 @@ interface GroupedObservable(TKey, TValue) : Observable!TValue
 interface ConnectableObservable(T) : Observable!T
 {
     void connect();
-    void disconnect();
+    void disconnect() @nogc;
 
     bool connected() const @property;
 }
