@@ -505,7 +505,7 @@ unittest
 {
     import reactived.util : assertEqual, transparentDump;
 
-    single(1).concat(single(2), single(3)).transparentDump("concat").assertEqual([1, 2, 3]);
+    just(1).concat(just(2), just(3)).transparentDump("concat").assertEqual([1, 2, 3]);
 
-    assert(!is(typeof({ concat(single(1), single("1")); })));
+    assert(!is(typeof({ concat(just(1), just("1")); })));
 }

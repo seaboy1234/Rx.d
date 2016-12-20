@@ -151,7 +151,7 @@ unittest
     int subscribes;
     int unsubscribes;
 
-    Observable!int o = single(1).doOnSubscription((Observer!int) { ++subscribes; }, (Observer!int) {
+    Observable!int o = just(1).doOnSubscription((Observer!int) { ++subscribes; }, (Observer!int) {
         ++unsubscribes;
     });
 
@@ -396,11 +396,11 @@ unittest
     import std.exception : assertThrown, assertNotThrown;
 
     // dfmt off
-    assertThrown(single!int(1).delay(dur!"msecs"(200))
+    assertThrown(just!int(1).delay(dur!"msecs"(200))
                               .timeout(dur!"msecs"(100))
                               .wait());
 
-    assertNotThrown(single!int(1).timeout(dur!"msecs"(100))
+    assertNotThrown(just!int(1).timeout(dur!"msecs"(100))
                                  .wait());
     // dfmt on
 }

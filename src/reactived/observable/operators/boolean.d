@@ -34,7 +34,7 @@ Observable!bool any(T)(Observable!T source) pure @safe nothrow
 ///
 unittest
 {
-    single(1).any().subscribe(value => assert(value, "value should be true."));
+    just(1).any().subscribe(value => assert(value, "value should be true."));
 
     range(0, 10).any().subscribe(value => assert(value, "value should be true."));
 
@@ -355,5 +355,5 @@ unittest
     range(0, 4).sequenceEqual([0, 1, 2, 3]).subscribe(v => assert(v));
     range(1, 4).sequenceEqual([0, 1, 2, 3]).subscribe(v => assert(!v));
     range(0, 0).sequenceEqual([9, 1091, 7]).subscribe(v => assert(!v));
-    single(10).sequenceEqual([10]).subscribe(v => assert(v));
+    just(10).sequenceEqual([10]).subscribe(v => assert(v));
 }

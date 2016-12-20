@@ -1,11 +1,6 @@
 module reactived.observable.operators.errors;
 
-import reactived.disposable : assignmentDisposable, CompositeDisposable,
-    Disposable;
-import reactived.observable.types;
-import reactived.observable.generators : create;
-import reactived.observer;
-import reactived.scheduler;
+import reactived;
 
 /**
     If source encounters an error, begin emitting notifications from next.
@@ -146,7 +141,7 @@ template catchException(TException) if (is(TException : Exception))
 
 unittest
 {
-    import reactived : single, sequenceEqual;
+    import reactived.util : assertEqual;
 
     // dfmt off
     create!int((Observer!int observer) {
@@ -158,8 +153,8 @@ unittest
             {
             };
         }).catchException!Exception((Exception) {
-            return single(3);
-        }).sequenceEqual([1, 2, 3]).subscribe(x => assert(x, "Excepted true.  Got false.")); 
+            return just(3);
+        }).assertEqual([1, 2, 3]); 
         //dfmt on
 }
 

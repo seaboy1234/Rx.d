@@ -135,7 +135,7 @@ unittest
         return cast(char)(value + 64);
     }
 
-    range(1, 3).flatMap!(x => single(toLetter(x))).sequenceEqual(['A', 'B',
+    range(1, 3).flatMap!(x => just(toLetter(x))).sequenceEqual(['A', 'B',
             'C']).subscribe(x => assert(x));
 
     range(1, 3).flatMap!(x => range(1, x)).sequenceEqual([1, 1, 2, 1, 2, 3])
