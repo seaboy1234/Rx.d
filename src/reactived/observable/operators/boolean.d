@@ -272,9 +272,7 @@ Observable!T defaultIfEmpty(T)(Observable!T source) pure @safe nothrow
 ///
 unittest
 {
-    int outVal = 1;
-    empty!int().defaultIfEmpty().subscribe(value => assert(0 == (outVal = 0),
-            "value should be 0"), () => assert(outVal == 0, "outVal should be 0."));
+    assert(empty!int().defaultIfEmpty().wait() == 0);
 }
 
 ///
@@ -309,10 +307,9 @@ Observable!T defaultIfEmpty(T)(Observable!T source, T defaultValue) pure @safe n
 
 unittest
 {
-    empty!int().defaultIfEmpty(10).subscribe(value => assert(value == 10, "value should be 0"));
+    assert(empty!int().defaultIfEmpty(10).wait() == 10);
 
-    range(0, 5).defaultIfEmpty(10).all!(a => a != 10)
-        .subscribe(value => assert(value, "value should be true."));
+    assert(range(0, 5).defaultIfEmpty(10).all!(a => a != 10).wait());
 }
 
 Observable!bool sequenceEqual(T, Range)(Observable!T source, Range sequence) pure @safe nothrow 
@@ -352,8 +349,10 @@ Observable!bool sequenceEqual(T, Range)(Observable!T source, Range sequence) pur
 
 unittest
 {
-    range(0, 4).sequenceEqual([0, 1, 2, 3]).subscribe(v => assert(v));
-    range(1, 4).sequenceEqual([0, 1, 2, 3]).subscribe(v => assert(!v));
-    range(0, 0).sequenceEqual([9, 1091, 7]).subscribe(v => assert(!v));
-    just(10).sequenceEqual([10]).subscribe(v => assert(v));
+    import reactived.util : assertEqual;
+
+    range(0, 4).assertEqual([0, 1, 2, 3]);
+    assert(!range(1, 4).sequenceEqual([0, 1, 2, 3]).wait());
+    assert(!range(0, 0).sequenceEqual([9, 1091, 7]).wait());
+    just(10).assertEqual([10]);
 }

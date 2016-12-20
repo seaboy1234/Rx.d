@@ -85,7 +85,9 @@ Observable!T last(T)(Observable!T source)
 
 unittest
 {
-    range(1, 10).last().sequenceEqual([10]).subscribe(x => assert(x));
+    import reactived.util : assertEqual;
+    
+    range(1, 10).last().assertEqual([10]);
 }
 
 /// Create an Observable sequence which maps input values to an output.
@@ -130,16 +132,16 @@ template flatMap(alias fun)
 
 unittest
 {
+    import reactived.util : assertEqual;
+
     char toLetter(int value)
     {
         return cast(char)(value + 64);
     }
 
-    range(1, 3).flatMap!(x => just(toLetter(x))).sequenceEqual(['A', 'B',
-            'C']).subscribe(x => assert(x));
+    range(1, 3).flatMap!(x => just(toLetter(x))).assertEqual(['A', 'B', 'C']);
 
-    range(1, 3).flatMap!(x => range(1, x)).sequenceEqual([1, 1, 2, 1, 2, 3])
-        .subscribe(x => assert(x));
+    range(1, 3).flatMap!(x => range(1, x)).assertEqual([1, 1, 2, 1, 2, 3]);
 }
 
 /// Applies an accumulator function to all values in the source Observable and emits the current result with each value.

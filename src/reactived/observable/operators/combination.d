@@ -3,9 +3,7 @@ module reactived.observable.operators.combination;
 import std.functional;
 import core.sync.mutex;
 
-import reactived.observable;
-import reactived.observer;
-import reactived.disposable;
+import reactived;
 import reactived.util : LinkedQueue;
 import disposable = reactived.disposable;
 
@@ -43,17 +41,9 @@ template startWith(Range) if (isRange!(Range) && is(ElementType!Range : T))
 unittest
 {
     import reactived.subject : Subject;
-    import reactived.observable.operators.boolean : sequenceEqual;
+    import reactived.util : assertEqual;
 
-    auto s = new Subject!int();
-
-    s.onNext(1);
-    s.onNext(2);
-    s.onNext(3);
-
-    auto o = s.startWith(0);
-
-    o.sequenceEqual([0, 1, 2, 3]).subscribe(v => assert(v));
+    range(1, 3).startWith(0).assertEqual([0, 1, 2, 3]);
 }
 
 Observable!T endWith(T)(Observable!T source, T value) pure @safe nothrow
@@ -95,18 +85,9 @@ template endWith(Range) if (isRange!(Range) && is(ElementType!Range : T))
 
 unittest
 {
-    import reactived.subject : Subject;
-    import reactived.observable.operators.boolean : sequenceEqual;
+    import reactived.util : assertEqual;
 
-    auto s = new Subject!int();
-
-    s.onNext(1);
-    s.onNext(2);
-    s.onNext(3);
-
-    auto o = s.endWith(4);
-
-    o.sequenceEqual([1, 2, 3, 4]).subscribe(v => assert(v));
+    range(1, 3).endWith(4).assertEqual([1, 2, 3, 4]);
 }
 
 alias latest = switchLatest;

@@ -631,6 +631,7 @@ unittest
     subject.onCompleted();
 
     currentThreadScheduler.work();
+    debounced.dispose();
 }
 
 Observable!T sample(T)(Observable!T source, Duration window, Scheduler scheduler = taskScheduler)
@@ -702,6 +703,7 @@ unittest
 
     subject.onCompleted();
     currentThreadScheduler.work();
+    sampled.dispose();
 }
 
 template ofType(TResult)
