@@ -86,7 +86,7 @@ Observable!T last(T)(Observable!T source)
 unittest
 {
     import reactived.util : assertEqual;
-    
+
     range(1, 10).last().assertEqual([10]);
 }
 
@@ -99,7 +99,7 @@ template map(alias fun)
         {
             void onNext(T value)
             {
-                observer.onNext(unaryFun!(fun)(value));
+                observer.onNext(unaryFun!fun(value));
             }
 
             return observable.subscribe(&onNext, &observer.onCompleted, &observer.onError);
@@ -132,7 +132,7 @@ template flatMap(alias fun)
 
 unittest
 {
-    import reactived.util : assertEqual;
+    import reactived.util : assertEqual, dump;
 
     char toLetter(int value)
     {
@@ -142,6 +142,9 @@ unittest
     range(1, 3).flatMap!(x => just(toLetter(x))).assertEqual(['A', 'B', 'C']);
 
     range(1, 3).flatMap!(x => range(1, x)).assertEqual([1, 1, 2, 1, 2, 3]);
+
+    ["Hello,", "World!", "This", "is", "a", "test", "sentence"].asObservable(defaultScheduler)
+        .flatMap!(x => x.asObservable(defaultScheduler)).dump("words");
 }
 
 /// Applies an accumulator function to all values in the source Observable and emits the current result with each value.

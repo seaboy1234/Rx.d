@@ -135,7 +135,7 @@ Observable!T doOnSubscription(T)(Observable!T observable,
     {
         onSubscribe(observer);
 
-        return new CompositeDisposable(createDisposable(() @nogc {
+        return new CompositeDisposable(createDisposable(() @nogc{
                 onUnsubscribe(observer);
             }), observable.subscribe(observer));
     }
@@ -343,7 +343,8 @@ unittest
     // dfmt on
 }
 
-Observable!T timeout(T)(Observable!T source, Duration duration, Scheduler scheduler = taskScheduler) pure @safe nothrow
+Observable!T timeout(T)(Observable!T source, Duration duration,
+        lazy Exception exception = new Exception("Timed Out!"), Scheduler scheduler = taskScheduler) pure @safe nothrow
 {
     Disposable subscribe(Observer!T observer)
     {
@@ -371,7 +372,7 @@ Observable!T timeout(T)(Observable!T source, Duration duration, Scheduler schedu
 
                 if (!disposable.isDisposed)
                 {
-                    onError(new Exception("Timed out!"));
+                    onError(exception());
                 }
             });
         }
@@ -456,5 +457,6 @@ Observable!T encapsulate(T)(Observable!T source)
     {
         return source.subscribe(observer);
     }
+
     return create(&subscribe);
 }

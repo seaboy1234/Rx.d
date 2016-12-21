@@ -100,7 +100,7 @@ Observable!T merge(T)(Observable!(Observable!T) source) pure @safe nothrow
 
         void onNext(Observable!T value)
         {
-            subscription.add(value.subscribe(&observer.onNext, &observer.onError));
+            subscription ~= value.subscribe(&observer.onNext, &observer.onError);
         }
 
         subscription ~= source.subscribe(&onNext, &observer.onCompleted, &observer.onError);

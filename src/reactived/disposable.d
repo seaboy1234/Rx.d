@@ -239,10 +239,7 @@ class BooleanDisposable : Disposable
 
     bool isDisposed() inout @safe @property
     {
-        synchronized (this)
-        {
-            return _isDisposed;
-        }
+        return _isDisposed;
     }
 
     void dispose() @nogc
@@ -338,7 +335,7 @@ class AssignmentDisposable(TDisposable : Disposable) : Disposable
 
     void disposable(TDisposable value) @nogc @trusted @property
     {
-        if(_disposed)
+        if (_disposed)
         {
             value.dispose();
             return;

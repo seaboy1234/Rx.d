@@ -18,17 +18,15 @@ Observable!(ElementType!Range) asObservable(Range)(Range input, Scheduler schedu
 {
     Disposable subscribe(Observer!(ElementType!Range) observer)
     {
-        import reactived.scheduler : taskScheduler;
-
         BooleanDisposable subscription = new BooleanDisposable();
 
         scheduler.run((void delegate() self) {
-            observer.onNext(input.front);
-
-            input.popFront();
-
             if (!input.empty && !subscription.isDisposed)
             {
+                observer.onNext(input.front);
+
+                input.popFront();
+
                 self();
             }
             else
@@ -93,8 +91,9 @@ auto asTask(T)(Observable!T source, TaskPool pool = taskPool)
             onCompleted();
         }
 
-        Disposable subscription = source.observeOn(currentThreadScheduler).subscribe(&onNext, &onCompleted, &onError);
-        scope(exit)
+        Disposable subscription = source.observeOn(currentThreadScheduler)
+            .subscribe(&onNext, &onCompleted, &onError);
+        scope (exit)
         {
             subscription.dispose();
         }
