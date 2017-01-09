@@ -71,22 +71,35 @@ unittest
 
     // dfmt off
     auto o = Random(unpredictableSeed).asObservable()
-                                      .observeOn(currentThreadScheduler)
                                       .take(10)
                                       .publish();
     // dfmt on
 
-    uint[] items = (uint[]).init;
+    uint[] items;
 
-    o.subscribe((x) { items ~= x; });
+    auto d1 = o.subscribe((x) { items ~= x; });
 
-    o.subscribe((x) => assert(items[$ - 1] == x));
+    auto d2 = o.dump("publish");
 
-    o.dump("publish()");
+
+    int index;
+    auto d3 = o.subscribe((x) => assert(items[index++] == x));
 
     o.connect();
+    o.wait();
 
-    currentThreadScheduler.work();
+    foreach (value; items)
+    {
+        import std.stdio : writeln;
+
+        writeln("publish_items => ", value);
+    }
+
+    assert(items.length == 10);
+
+    d1.dispose();
+    d2.dispose();
+    d3.dispose();
 }
 
 ConnectableObservable!T replay(T)(Observable!T source) pure @safe nothrow
@@ -102,25 +115,31 @@ unittest
 
     // dfmt off
     auto o = Random(unpredictableSeed).asObservable()
-                                      .observeOn(currentThreadScheduler)
                                       .take(10)
                                       .replay();
     // dfmt on
 
-    uint[] items = (uint[]).init;
+    uint[] items;
 
     auto d1 = o.subscribe((x) { items ~= x; });
 
-    auto d2 = o.dump("replay()");
+    auto d2 = o.dump("replay");
 
     o.connect();
-
-    currentThreadScheduler.work();
 
     int index;
     auto d3 = o.subscribe((x) => assert(items[index++] == x));
 
-    currentThreadScheduler.work();
+    o.wait();
+
+    foreach (value; items)
+    {
+        import std.stdio : writeln;
+
+        writeln("replay_items => ", value);
+    }
+
+    assert(items.length == 10);
 
     d1.dispose();
     d2.dispose();
@@ -173,8 +192,7 @@ unittest
     int subscriptions;
 
     // dfmt off
-    auto o = range(0, 10).take(10)
-                         .doOnSubscription((Observer!int) {subscriptions++;}, (Observer!int){subscriptions--;})
+    auto o = range(0, 10).doOnSubscription((Observer!int) {subscriptions++;}, (Observer!int){subscriptions--;})
                          .transparentDump("refCount")
                          .publish()
                          .refCount();
@@ -186,6 +204,8 @@ unittest
 
     int index;
     auto d2 = o.subscribe((x) => assert(items[index++] == x));
+
+    assert(items.length == 10);
 
     assert(subscriptions == 1);
 
