@@ -1,10 +1,12 @@
 module reactived.scheduler;
 
 import std.traits;
+import std.datetime;
 import std.parallelism : task, taskPool, TaskPool;
 
 import reactived;
 import reactived.observer;
+import reactived.util : LinkedQueue;
 
 interface Scheduler
 {
@@ -40,9 +42,9 @@ Scheduler taskScheduler()
     return initOnce!task(new TaskScheduler());
 }
 
-CurrentThreadScheduler currentThreadScheduler()
+CurrentThreadScheduler2 currentThreadScheduler()
 {
-    return CurrentThreadScheduler.instance;
+    return CurrentThreadScheduler2.instance;
 }
 
 template isScheduler(T)
@@ -95,6 +97,11 @@ class TaskScheduler : Scheduler
 
     void run(void delegate() dg)
     {
+        runTask(dg);
+    }
+
+    auto runTask(void delegate() dg)
+    {
         // This is a workaround to a strange compiler error which was 
         // complaining that Task could not access the frame of `run`. 
         static void call(void delegate() dg)
@@ -105,6 +112,8 @@ class TaskScheduler : Scheduler
         auto t = task!call(dg);
 
         _pool.put(t);
+
+        return t;
     }
 }
 
@@ -161,6 +170,112 @@ unittest
     Thread.sleep(dur!"msecs"(100));
 
     assert(safe);
+}
+
+class CurrentThreadScheduler2 : Scheduler
+{
+    import std.concurrency : Tid, thisTid;
+    import std.exception : enforce;
+    import core.thread : Thread;
+
+    private Tid _tid;
+    private LinkedQueue!DelegateMessage _queue;
+
+    private static CurrentThreadScheduler2 _instance;
+
+    alias hasWork = _queue.empty;
+
+    this()
+    {
+        _tid = thisTid;
+        _queue = new LinkedQueue!DelegateMessage();
+    }
+
+    static this()
+    {
+        _instance = new CurrentThreadScheduler2();
+    }
+
+    private static struct DelegateMessage
+    {
+        void delegate() dg;
+    }
+
+    static typeof(this) instance() @property
+    {
+        return _instance;
+    }
+
+    void run(void delegate() dg)
+    {
+        if (thisTid == _tid)
+        {
+            dg();
+        }
+        else
+        {
+            _queue.enqueue(DelegateMessage(dg));
+        }
+    }
+
+    void work(Duration timeout = dur!"msecs"(1))
+    {
+        enforce(thisTid == _tid, "Cannot use different thread to call!");
+
+        if (_queue.empty)
+        {
+            Thread.sleep(timeout);
+        }
+
+        while (!_queue.empty)
+        {
+            _queue.dequeue.dg();
+
+            if (_queue.empty)
+            {
+                Thread.sleep(timeout);
+            }
+        }
+    }
+}
+
+unittest
+{
+    import std.concurrency : thisTid, Tid;
+    import std.exception : assertThrown;
+
+    alias currentThreadScheduler = CurrentThreadScheduler2.instance;
+
+    bool safe;
+    Tid tid = thisTid;
+
+    auto s = currentThreadScheduler;
+
+    void test()
+    {
+        assert(thisTid == tid);
+        safe = true;
+    }
+
+    s.run(&test);
+
+    s.work();
+
+    assert(safe);
+
+    safe = false;
+
+    taskScheduler.run(() { s.run(&test); });
+
+    s.work();
+
+    assert(safe);
+
+    newThreadScheduler.run(() {
+        assert(s != currentThreadScheduler);
+
+        assertThrown(s.work());
+    });
 }
 
 class CurrentThreadScheduler : Scheduler
