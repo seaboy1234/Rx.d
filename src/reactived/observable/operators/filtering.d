@@ -460,7 +460,7 @@ template groupBy(alias keySelector)
                 _key = key;
             }
 
-            TKey key() @property
+            TKey key() const @property
             {
                 return _key;
             }
@@ -612,7 +612,7 @@ unittest
     }
 
     // dfmt off
-    Disposable debounced = subject.debounce(dur!"msecs"(100))
+    Disposable debounced = subject.debounce(dur!"msecs"(150))
                                   .doOnNext((int x) { writeln("debounce => ", x); })
                                   .sequenceEqual([1, 2, 3])
                                   .observeOn(currentThreadScheduler)
@@ -620,13 +620,13 @@ unittest
     // dfmt on
     subject.onNext(5);
     subject.onNext(1);
-    sleep(105);
+    sleep(200);
     subject.onNext(99);
-    sleep(50);
+    sleep(1);
     subject.onNext(2);
-    sleep(105);
+    sleep(200);
     subject.onNext(3);
-    sleep(105);
+    sleep(200);
 
     subject.onCompleted();
 

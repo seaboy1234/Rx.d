@@ -9,7 +9,7 @@ import std.algorithm;
 
 /// Represents a hybrid between an Observable and Observer, providing the functions of both.  
 /// This will often be the root on an Observable sequence.
-class Subject(T) : Observable!T, Observer!T
+class Subject(T) : ObserverBase!T, Observable!T
 {
     private
     {
@@ -18,62 +18,33 @@ class Subject(T) : Observable!T, Observer!T
     }
 
     /// Provides the next value to the underlying Observers.
-    void onNext(T value)
+    override void onNextCore(T value)
     {
-        if (_completed)
+        foreach (observer; _observers[])
         {
-            return;
-        }
-
-        try
-        {
-            foreach (observer; _observers)
-            {
-                observer.onNext(value);
-            }
-        }
-        catch (Exception e)
-        {
-            onError(e);
+            observer.onNext(value);
         }
     }
 
     /// Causes the sequence to complete. 
-    void onCompleted()
+    override void onCompletedCore()
     {
-        if (_completed)
+        foreach (observer; _observers[])
         {
-            return;
-        }
-        try
-        {
-            foreach (observer; _observers)
-            {
-                observer.onCompleted();
-            }
-        }
-        catch (Exception e)
-        {
-            onError(e);
+            observer.onCompleted();
         }
         _completed = true;
     }
 
     /// Causes the sequence to complete with the specified error.
-    void onError(Throwable error)
+    override void onErrorCore(Throwable error)
     {
-        if (_completed)
-        {
-            return;
-        }
         _completed = true;
 
-        foreach (observer; _observers)
+        foreach (observer; _observers[])
         {
             observer.onError(error);
         }
-
-        _observers = Observer!(T)[].init;
     }
 
     /// Subscribes an Observer to this Observable sequence.
@@ -124,11 +95,14 @@ unittest
 {
     import std.stdio : writeln;
 
+    int global;
+
     class MyObserver : Observer!(int)
     {
         void onNext(int value)
         {
             assert(value < 3);
+            global++;
             writeln(value);
         }
 
@@ -144,14 +118,19 @@ unittest
     }
 
     auto subject = new Subject!int();
-    auto observer = new MyObserver();
+    auto observer1 = new MyObserver();
+    auto observer2 = new MyObserver();
 
-    auto token = subject.subscribe(observer);
+    auto token1 = subject.subscribe(observer1);
+    auto token2 = subject.subscribe(observer2);
 
-    subject.onNext(1); // => 1
-    subject.onNext(2); // => 2
-    token.dispose();
+    subject.onNext(1); // => 1 [global == 2]
+    subject.onNext(2); // => 2 [global == 4]
+    token1.dispose();
+    token2.dispose();
     subject.onNext(3); // (nothing)
+
+    assert(global == 4);
 }
 
 /// Represents a Subject which is able to replay the values it receives.
@@ -183,28 +162,28 @@ class ReplaySubject(T) : Subject!(T)
         _window = window;
     }
 
-    override void onNext(T value)
+    override void onNextCore(T value)
     {
         _items ~= SubjectItem(Clock.currTime(), (observer) {
             observer.onNext(value);
         });
-        super.onNext(value);
+        super.onNextCore(value);
     }
 
-    override void onError(Throwable error)
+    override void onErrorCore(Throwable error)
     {
         _items ~= SubjectItem(Clock.currTime(), (observer) {
             observer.onError(error);
         });
-        super.onError(error);
+        super.onErrorCore(error);
     }
 
-    override void onCompleted()
+    override void onCompletedCore()
     {
         _items ~= SubjectItem(Clock.currTime(), (observer) {
             observer.onCompleted();
         });
-        super.onCompleted();
+        super.onCompletedCore();
     }
 
     override Disposable subscribe(Observer!T observer)

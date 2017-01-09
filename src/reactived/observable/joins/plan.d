@@ -201,5 +201,5 @@ template AliasType(TResult)
 
 unittest
 {
-    single(1).and(single(2), single(3)).then!int((a, b, c) => a + b + c);
+    just(1).and(just(2), just(3)).then!int((a, b, c) => a + b + c);
 }

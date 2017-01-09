@@ -15,7 +15,7 @@ import disposable = reactived.disposable;
 /// Create an Observable sequence from a Subscribe method.
 Observable!T create(T)(Disposable delegate(Observer!T) subscribe) pure @safe nothrow
 {
-    static class AnonymousObservable : Observable!T
+    static class AnonymousObservable : ObservableBase!T
     {
         private Disposable delegate(Observer!T) _subscribe;
 
@@ -24,17 +24,9 @@ Observable!T create(T)(Disposable delegate(Observer!T) subscribe) pure @safe not
             _subscribe = subscribe;
         }
 
-        Disposable subscribe(Observer!T observer)
+        override Disposable subscribeCore(Observer!T observer)
         {
-            try
-            {
-                return _subscribe(observer);
-            }
-            catch (Exception e)
-            {
-                observer.onError(e);
-                return disposable.empty();
-            }
+            return _subscribe(observer);
         }
     }
 
