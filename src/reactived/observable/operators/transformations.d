@@ -284,7 +284,7 @@ unittest
                 observer.onNext(MESSAGES[uniform(0, $)]);
             }
 
-            Thread.sleep(dur!"msecs"(uniform(10, 500)));
+            Thread.sleep(dur!"msecs"(uniform(10, 250)));
 
             if (!subscription.isDisposed)
             {
@@ -303,8 +303,7 @@ unittest
     assert(vals.length != 1);
 }
 
-Observable!(Observable!T) window(T)(Observable!T source, Duration size,
-        Scheduler scheduler = taskScheduler)
+Observable!(Observable!T) window(T)(Observable!T source, Duration size)
 {
     Disposable subscribe(Observer!(Observable!T) observer)
     {
@@ -312,21 +311,32 @@ Observable!(Observable!T) window(T)(Observable!T source, Duration size,
 
         Subject!T current = new Subject!T();
         BooleanDisposable subscription = new BooleanDisposable();
+        auto currentSubscription = assignmentDisposable();
         Mutex mutex = new Mutex();
+        MonoTime windowOpened;
         bool completed, error;
 
         void onNext(T value)
         {
-            synchronized (mutex)
+            auto duration = MonoTime.currTime - windowOpened;
+
+            if (duration >= size)
             {
-                current.onNext(value);
+                windowOpened = MonoTime.currTime;
+
+                current.onCompleted();
+                current = new Subject!T();
+                observer.onNext(current);
             }
+
+            current.onNext(value);
         }
 
         void onCompleted()
         {
             completed = true;
             current.onCompleted();
+            observer.onCompleted();
         }
 
         void onError(Throwable e)
@@ -334,32 +344,6 @@ Observable!(Observable!T) window(T)(Observable!T source, Duration size,
             error = true;
             observer.onError(e);
         }
-
-        scheduler.run((self) {
-            Thread.sleep(size);
-
-            Subject!T old = current;
-
-            if (!error)
-            {
-                if (completed)
-                {
-                    old.onCompleted();
-                    observer.onCompleted();
-                }
-                else if (!subscription.isDisposed)
-                {
-                    synchronized (mutex)
-                    {
-                        observer.onNext(current = new Subject!T());
-                        old.onCompleted();
-                    }
-                    self();
-                }
-            }
-        });
-
-        observer.onNext(current);
 
         subscription = new BooleanDisposable(source.subscribe(&onNext, &onCompleted, &onError));
 
@@ -381,8 +365,7 @@ unittest
     // dfmt off
     assert(range(0, 100).delay!(x => dur!"msecs"(uniform(1, 10)))
                         .window(dur!"msecs"(100))
-                        .flatMap!(x => x.transparentDump("window" ~ (current++).to!string())
-                                        .length())
+                        .flatMap!(x => x.length())
                         .scan!((a, b) => a + b)
                         .transparentDump("Total items")
                         .wait() == 100);
