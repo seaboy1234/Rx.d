@@ -90,6 +90,40 @@ unittest
     range(1, 10).last().assertEqual([10]);
 }
 
+Observable!T elementAt(T)(Observable!T source, size_t index)
+in
+{
+    assert(index >= 0);
+}
+body
+{
+    Disposable subscribe(Observer!T observer)
+    {
+        BooleanDisposable subscription;
+
+        void onNext(T value)
+        {
+            if (index-- == 0)
+            {
+                observer.onNext(value);
+                observer.onCompleted();
+
+                if (subscription !is null)
+                {
+                    subscription.dispose();
+                }
+            }
+        }
+
+        subscription = new BooleanDisposable(source.subscribe(&onNext,
+                &observer.onCompleted, &observer.onError));
+
+        return subscription;
+    }
+
+    return create(&subscribe);
+}
+
 /// Create an Observable sequence which maps input values to an output.
 template map(alias fun)
 {
