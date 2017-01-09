@@ -2,6 +2,8 @@ module reactived.observable.operators.boolean;
 
 import std.functional;
 import std.range.primitives;
+import std.typecons;
+
 import reactived.observable;
 import reactived.observer;
 import reactived.disposable;
@@ -355,4 +357,15 @@ unittest
     assert(!range(1, 4).sequenceEqual([0, 1, 2, 3]).wait());
     assert(!range(0, 0).sequenceEqual([9, 1091, 7]).wait());
     just(10).assertEqual([10]);
+}
+
+Observable!bool sequenceEqual(T)(Observable!T source, Observable!T other)
+{
+    static struct Union
+    {
+        T left;
+        T right;
+    }
+
+    return source.zip!((left, right) => Union(left, right))(other).all!(x => x.left == x.right)();
 }

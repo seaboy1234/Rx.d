@@ -474,7 +474,7 @@ Observable!(T[0].ElementType) concat(T...)(T sources) if (T.length > 1)
     {
         static if (!is(T[i] == T[0]))
         {
-            static assert(0, T[i].mangleof ~ "is not a " ~ T[0].mangleof ~ "!");
+            static assert(0, T[i].mangleof ~ " is not a " ~ T[0].mangleof ~ "!");
         }
         items ~= value;
     }
