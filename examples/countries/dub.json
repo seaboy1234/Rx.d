@@ -1,0 +1,15 @@
+{
+	"name": "countries",
+	"authors": [
+		"Christian"
+	],
+	"description": "Rx.d example",
+	"copyright": "Copyright © 2016, Christian",
+	"license": "MIT",
+	"dependencies": {
+		"reactived": {
+			"path": "../../"
+		}
+	},
+	"targetPath": "target"
+}
