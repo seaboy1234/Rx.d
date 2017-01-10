@@ -11,6 +11,7 @@ The API is based largely on the Rx.NET API with some minor changes.  Efforts are
 compatibility with the ReactiveX spec.
 
 ```d
+import reactived;
 /* 
 continents.json:
 [
@@ -65,7 +66,7 @@ continents.subscribe((continent) {
 
 ## Concepts
 
-At the core of Rx.d is the Observable, Observer, and Disposable interfaces.
+At the core of Rx.d are the Observable, Observer, and Disposable interfaces.
 
 ```d
 // src/reactived/observable/types.d
@@ -108,6 +109,15 @@ import reactived;
 import std.conv;
 
 [1, 2, 3].asObservable().map!(x => to!string(x)).asRange() // ["1", "2", "3"]
+```
+
+The filter operator removes elements which do not satisfy a predicate:
+
+```d
+import reactived;
+
+range(0, 5).filter!(x => x % 2 == 0).asRange() // [0, 2, 4]
+
 ```
 
 More complex operators can combine several observable sequences into one:
